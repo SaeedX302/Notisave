@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Notisave.Light" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/primary</item>
+        <item name="android:colorPrimaryDark">@color/primary_dark</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:windowBackground">@color/page_bg_light</item>
+        <item name="android:statusBarColor">@color/primary_dark</item>
+        <item name="android:navigationBarColor">@color/nav_bg_light</item>
+        <item name="pageBackground">@color/page_bg_light</item>
+        <item name="cardBackground">@color/card_bg_light</item>
+        <item name="textPrimary">@color/text_primary_light</item>
+        <item name="textSecondary">@color/text_secondary_light</item>
+        <item name="dividerColor">@color/divider_light</item>
+        <item name="chipBackground">@color/chip_bg_light</item>
+        <item name="navBackground">@color/nav_bg_light</item>
+        <item name="navUnselected">@color/nav_unselected_light</item>
+        <item name="primarySoft">@color/primary_soft</item>
+        <item name="accentSoft">@color/accent_soft</item>
+        <item name="successColor">@color/success</item>
+        <item name="warningColor">@color/warning</item>
+        <item name="dangerColor">@color/danger</item>
+    </style>
+
+    <style name="Theme.Notisave.Dark" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/primary</item>
+        <item name="android:colorPrimaryDark">@color/primary_dark</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:windowBackground">@color/page_bg_dark</item>
+        <item name="android:statusBarColor">@color/page_bg_dark</item>
+        <item name="android:navigationBarColor">@color/nav_bg_dark</item>
+        <item name="pageBackground">@color/page_bg_dark</item>
+        <item name="cardBackground">@color/card_bg_dark</item>
+        <item name="textPrimary">@color/text_primary_dark</item>
+        <item name="textSecondary">@color/text_secondary_dark</item>
+        <item name="dividerColor">@color/divider_dark</item>
+        <item name="chipBackground">@color/chip_bg_dark</item>
+        <item name="navBackground">@color/nav_bg_dark</item>
+        <item name="navUnselected">@color/nav_unselected_dark</item>
+        <item name="primarySoft">@color/primary_soft_dark</item>
+        <item name="accentSoft">@color/accent_soft_dark</item>
+        <item name="successColor">@color/success_dark</item>
+        <item name="warningColor">@color/warning_dark</item>
+        <item name="dangerColor">@color/danger_dark</item>
+    </style>
+
+    <style name="Text.Title" parent="android:TextAppearance.Material.Title">
+        <item name="android:textColor">?attr/textPrimary</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Text.SectionTitle" parent="android:TextAppearance.Material.Subhead">
+        <item name="android:textColor">?attr/textPrimary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Text.Body" parent="android:TextAppearance.Material.Body1">
+        <item name="android:textColor">?attr/textPrimary</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="Text.Caption" parent="android:TextAppearance.Material.Caption">
+        <item name="android:textColor">?attr/textSecondary</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="Button.Primary" parent="android:Widget.Material.Button">
+        <item name="android:background">@drawable/bg_button_primary</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:paddingStart">20dp</item>
+        <item name="android:paddingEnd">20dp</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+
+    <style name="Button.Outline" parent="android:Widget.Material.Button">
+        <item name="android:background">@drawable/bg_button_outline</item>
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:paddingStart">20dp</item>
+        <item name="android:paddingEnd">20dp</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+</resources>

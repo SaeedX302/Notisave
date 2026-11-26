@@ -1,0 +1,6 @@
+# Build outputs and signing keys — never commit these.
+build/
+*.apk
+*.idsig
+*.keystore
+*.jks

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="pageBackground" format="color" />
+    <attr name="cardBackground" format="color" />
+    <attr name="textPrimary" format="color" />
+    <attr name="textSecondary" format="color" />
+    <attr name="dividerColor" format="color" />
+    <attr name="chipBackground" format="color" />
+    <attr name="navBackground" format="color" />
+    <attr name="navUnselected" format="color" />
+    <attr name="primarySoft" format="color" />
+    <attr name="accentSoft" format="color" />
+    <attr name="successColor" format="color" />
+    <attr name="warningColor" format="color" />
+    <attr name="dangerColor" format="color" />
+</resources>
