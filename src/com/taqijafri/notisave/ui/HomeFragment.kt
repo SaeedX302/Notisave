@@ -1,6 +1,5 @@
 package com.taqijafri.notisave.ui
 
-import android.app.Activity
 import android.app.Fragment
 import android.content.Intent
 import android.os.Bundle
@@ -11,7 +10,6 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import com.taqijafri.notisave.MainActivity
 import com.taqijafri.notisave.R
 import com.taqijafri.notisave.data.NotiDbHelper
@@ -42,8 +40,11 @@ class HomeFragment : Fragment() {
         view.findViewById<TextView>(R.id.see_all_recent).setOnClickListener {
             (activity as? MainActivity)?.selectTab(MainActivity.TAB_NOTIFICATIONS)
         }
-        view.findViewById<Button>(R.id.btn_choose_folder).setOnClickListener {
-            StatusHelper.openFolderPicker(this)
+        view.findViewById<View>(R.id.statuses_card).setOnClickListener {
+            (activity as? MainActivity)?.selectTab(MainActivity.TAB_STATUSES)
+        }
+        view.findViewById<Button>(R.id.btn_open_statuses).setOnClickListener {
+            (activity as? MainActivity)?.selectTab(MainActivity.TAB_STATUSES)
         }
         return view
     }
@@ -53,36 +54,30 @@ class HomeFragment : Fragment() {
         refresh()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode != StatusHelper.PICK_FOLDER_REQUEST) {
-            super.onActivityResult(requestCode, resultCode, data)
-            return
-        }
-        val uri = data?.data
-        if (resultCode == Activity.RESULT_OK && uri != null) {
-            val ok = StatusHelper.handleFolderPicked(activity, uri)
-            Toast.makeText(
-                activity,
-                if (ok) R.string.status_folder_picked else R.string.status_folder_failed,
-                Toast.LENGTH_SHORT
-            ).show()
-            refresh()
-        }
-    }
-
     fun refresh() {
         val view = view ?: return
         val activity = activity ?: return
 
-        // --- setup: only show what is still missing ---
-        val needsAccess = !ListenerHelper.isListenerEnabled(activity)
-        val needsFolder = !StatusHelper.hasFolderAccess(activity)
-        view.findViewById<View>(R.id.access_row).visibility = if (needsAccess) View.VISIBLE else View.GONE
-        view.findViewById<View>(R.id.folder_row).visibility = if (needsFolder) View.VISIBLE else View.GONE
-        view.findViewById<View>(R.id.setup_divider).visibility =
-            if (needsAccess && needsFolder) View.VISIBLE else View.GONE
-        view.findViewById<View>(R.id.setup_card).visibility =
-            if (needsAccess || needsFolder) View.VISIBLE else View.GONE
+        // --- access & statuses cards ---
+        val listenerEnabled = ListenerHelper.isListenerEnabled(activity)
+        val folderGranted = StatusHelper.hasFolderAccess(activity)
+        val statusCard = view.findViewById<View>(R.id.status_card)
+        val statusesCard = view.findViewById<View>(R.id.statuses_card)
+        val statusText = view.findViewById<TextView>(R.id.status_text)
+        val liveDot = view.findViewById<View>(R.id.status_live_dot)
+        val btnAccess = view.findViewById<Button>(R.id.btn_access)
+
+        statusText.text = getString(
+            if (listenerEnabled) R.string.status_enabled else R.string.status_disabled
+        )
+        liveDot.visibility = if (listenerEnabled) View.VISIBLE else View.GONE
+        btnAccess.text = getString(
+            if (listenerEnabled) R.string.btn_access_granted else R.string.btn_grant_access
+        )
+        btnAccess.isEnabled = !listenerEnabled
+        // Hide Notification Access card once enabled; hide Statuses shortcut too when both permissions are granted.
+        statusCard.visibility = if (listenerEnabled) View.GONE else View.VISIBLE
+        statusesCard.visibility = if (listenerEnabled && folderGranted) View.GONE else View.VISIBLE
 
         // --- stats ---
         view.findViewById<TextView>(R.id.stat_total).text = db.getTotalCount().toString()

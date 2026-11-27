@@ -186,10 +186,14 @@ class NotificationsFragment : Fragment() {
     }
 
     private fun addChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
+        val ta = activity.obtainStyledAttributes(intArrayOf(R.attr.textPrimary, R.attr.inkOnFilled))
+        val primaryColor = ta.getColor(0, Color.BLACK)
+        val onFilledColor = ta.getColor(1, Color.WHITE)
+        ta.recycle()
         val chip = TextView(activity).apply {
             text = label
             textSize = 13f
-            setPadding(28, 16, 28, 16)
+            setPadding(32, 16, 32, 16)
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -198,18 +202,12 @@ class NotificationsFragment : Fragment() {
             layoutParams = lp
             if (isSelected) {
                 setBackgroundResource(R.drawable.bg_chip_selected)
-                setTextColor(Color.WHITE)
+                setTextColor(onFilledColor)
             } else {
                 setBackgroundResource(R.drawable.bg_chip)
-                setTextColor(resources.getColor(android.R.color.black))
+                setTextColor(primaryColor)
             }
             setOnClickListener { onClick() }
-        }
-        // Re-resolve text color from the theme so dark mode stays readable.
-        if (!isSelected) {
-            val ta = activity.obtainStyledAttributes(intArrayOf(R.attr.textPrimary))
-            chip.setTextColor(ta.getColor(0, Color.BLACK))
-            ta.recycle()
         }
         chipRow.addView(chip)
     }

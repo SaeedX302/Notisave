@@ -162,6 +162,13 @@ class SettingsFragment : Fragment() {
         }
 
         // --- about developer / WhatsApp ---
+        val versionName = try {
+            activity.packageManager.getPackageInfo(activity.packageName, 0).versionName ?: ""
+        } catch (_: Exception) { "" }
+        if (versionName.isNotEmpty()) {
+            view.findViewById<TextView>(R.id.app_version_text).text =
+                getString(R.string.app_version_format, versionName)
+        }
         view.findViewById<Button>(R.id.btn_whatsapp).setOnClickListener {
             try {
                 val intent = Intent(
@@ -187,6 +194,8 @@ class SettingsFragment : Fragment() {
         val enabled = ListenerHelper.isListenerEnabled(activity)
         view.findViewById<TextView>(R.id.access_status_text).text =
             getString(if (enabled) R.string.status_enabled else R.string.status_disabled)
+        view.findViewById<View>(R.id.settings_access_dot).visibility =
+            if (enabled) View.VISIBLE else View.GONE
         view.findViewById<Button>(R.id.btn_access_settings).visibility =
             if (enabled) View.GONE else View.VISIBLE
     }

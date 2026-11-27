@@ -1,6 +1,7 @@
 package com.taqijafri.notisave.ui
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
@@ -67,6 +68,9 @@ class NotificationAdapter(
             else if (n.title.isNotBlank()) n.title else n.appName
         text.text = if (redactPreviews) context.getString(R.string.preview_hidden) else n.text
         dot.visibility = if (n.isRead) View.GONE else View.VISIBLE
+        val ta = context.obtainStyledAttributes(intArrayOf(R.attr.textPrimary, R.attr.textSecondary))
+        title.setTextColor(if (n.isRead) ta.getColor(1, Color.GRAY) else ta.getColor(0, Color.BLACK))
+        ta.recycle()
 
         view.setOnClickListener { onItemClick(n) }
         deleteBtn.setOnClickListener { onDelete(n) }

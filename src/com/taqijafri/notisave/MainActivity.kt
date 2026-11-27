@@ -55,6 +55,7 @@ class MainActivity : Activity() {
     private lateinit var navIcons: Array<ImageView>
     private lateinit var navLabels: Array<TextView>
     private lateinit var navItems: Array<LinearLayout>
+    private lateinit var navDots: Array<View>
     private lateinit var badge: TextView
     private var authInProgress = false
     private var lockContentView: View? = null
@@ -95,6 +96,13 @@ class MainActivity : Activity() {
             findViewById(R.id.nav_statuses),
             findViewById(R.id.nav_apps),
             findViewById(R.id.nav_settings)
+        )
+        navDots = arrayOf(
+            findViewById(R.id.nav_home_dot),
+            findViewById(R.id.nav_notifications_dot),
+            findViewById(R.id.nav_statuses_dot),
+            findViewById(R.id.nav_apps_dot),
+            findViewById(R.id.nav_settings_dot)
         )
         badge = findViewById(R.id.nav_badge)
 
@@ -179,8 +187,10 @@ class MainActivity : Activity() {
     }
 
     private fun updateNavAppearance() {
-        val selectedColor = Color.parseColor("#4F46E5")
-        val unselectedColor = Color.parseColor("#9CA3AF")
+        val ta = obtainStyledAttributes(intArrayOf(R.attr.textPrimary, R.attr.navUnselected))
+        val selectedColor = ta.getColor(0, Color.BLACK)
+        val unselectedColor = ta.getColor(1, Color.GRAY)
+        ta.recycle()
         navIcons.forEachIndexed { i, icon ->
             icon.imageTintList = ColorStateList.valueOf(
                 if (i == currentTab) selectedColor else unselectedColor
@@ -188,6 +198,9 @@ class MainActivity : Activity() {
         }
         navLabels.forEachIndexed { i, label ->
             label.setTextColor(if (i == currentTab) selectedColor else unselectedColor)
+        }
+        navDots.forEachIndexed { i, dot ->
+            dot.visibility = if (i == currentTab) View.VISIBLE else View.INVISIBLE
         }
     }
 
