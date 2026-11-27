@@ -13,6 +13,11 @@ import android.widget.Switch
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Switch
+import android.widget.TextView
+import android.app.Activity
 import com.taqijafri.notisave.MainActivity
 import com.taqijafri.notisave.R
 import com.taqijafri.notisave.data.NotiDbHelper
@@ -20,9 +25,13 @@ import com.taqijafri.notisave.data.Prefs
 import com.taqijafri.notisave.util.Constants
 import com.taqijafri.notisave.util.ListenerHelper
 import com.taqijafri.notisave.util.ThemeHelper
+import com.taqijafri.notisave.util.NotificationBackup
 
 /** Settings: theme, retention, permissions, privacy, about developer. */
 class SettingsFragment : Fragment() {
+    private val createBackupRequest = 4101
+    private val restoreBackupRequest = 4102
+    private var pendingPassword: CharArray? = null
 
     private lateinit var db: NotiDbHelper
     private lateinit var prefs: Prefs
@@ -44,6 +53,30 @@ class SettingsFragment : Fragment() {
                 prefs.redactPreviews = enabled
                 (activity as? MainActivity)?.recreate()
             }
+        }
+        view.findViewById<Switch>(R.id.switch_app_lock).apply {
+            isChecked = prefs.appLockEnabled
+            setOnCheckedChangeListener { _, enabled ->
+                if (enabled && (android.os.Build.VERSION.SDK_INT < 28 ||
+                    !(activity.getSystemService(android.content.Context.KEYGUARD_SERVICE) as android.app.KeyguardManager).isDeviceSecure)) {
+                    isChecked = false
+                    Toast.makeText(activity, R.string.app_lock_setup_device, Toast.LENGTH_LONG).show()
+                } else prefs.appLockEnabled = enabled
+            }
+        }
+        view.findViewById<Button>(R.id.btn_backup_export).setOnClickListener {
+            askBackupPassword { password ->
+                pendingPassword = password
+                startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE); type = "application/octet-stream"
+                    putExtra(Intent.EXTRA_TITLE, "notisave-backup.nsb")
+                }, createBackupRequest)
+            }
+        }
+        view.findViewById<Button>(R.id.btn_backup_import).setOnClickListener {
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE); type = "application/octet-stream"
+            }, restoreBackupRequest)
         }
 
         // --- theme ---
@@ -148,5 +181,42 @@ class SettingsFragment : Fragment() {
                 if (ListenerHelper.isListenerEnabled(activity)) R.string.status_enabled
                 else R.string.status_disabled
             )
+    }
+
+    private fun askBackupPassword(onPassword: (CharArray) -> Unit) {
+        val input = EditText(activity).apply {
+            inputType = 129
+            hint = getString(R.string.backup_password_hint)
+        }
+        AlertDialog.Builder(activity).setTitle(R.string.backup_password_title)
+            .setMessage(R.string.backup_password_message).setView(input)
+            .setPositiveButton(R.string.btn_continue) { _, _ ->
+                val password = input.text.toString().toCharArray()
+                if (password.size < 8) Toast.makeText(activity, R.string.backup_password_short, Toast.LENGTH_LONG).show()
+                else onPassword(password)
+            }.setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (resultCode != Activity.RESULT_OK || data?.data == null) return
+        if (requestCode == createBackupRequest) {
+            val password = pendingPassword ?: return
+            try {
+                NotificationBackup.export(activity, data.data!!, password)
+                Toast.makeText(activity, R.string.backup_export_done, Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(activity, getString(R.string.backup_failed, e.message ?: ""), Toast.LENGTH_LONG).show()
+            } finally { password.fill('\u0000'); pendingPassword = null }
+        } else if (requestCode == restoreBackupRequest) {
+            askBackupPassword { password ->
+                try {
+                    val count = NotificationBackup.import(activity, data.data!!, password)
+                    Toast.makeText(activity, getString(R.string.backup_import_done, count), Toast.LENGTH_LONG).show()
+                    (activity as? MainActivity)?.refreshBadge()
+                } catch (e: Exception) {
+                    Toast.makeText(activity, R.string.backup_failed, Toast.LENGTH_LONG).show()
+                } finally { password.fill('\u0000') }
+            }
+        }
     }
 }
