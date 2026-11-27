@@ -36,13 +36,13 @@ object NotificationBackup {
 
     fun export(context: Context, uri: android.net.Uri, password: CharArray) {
         require(password.size >= 8) { "Use a password with at least 8 characters" }
-        val salt = ByteArray(16).also(SecureRandom()::nextBytes)
-        val iv = ByteArray(12).also(SecureRandom()::nextBytes)
-        val key = deriveKey(password, salt)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, iv))
-        val temp = File.createTempFile("notisave-export-", ".nsb", context.cacheDir)
+        val temp = createExportTempFile(context)
         try {
+            val salt = ByteArray(16).also(SecureRandom()::nextBytes)
+            val iv = ByteArray(12).also(SecureRandom()::nextBytes)
+            val key = deriveKey(password, salt)
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, iv))
             FileOutputStream(temp).use { raw ->
                 val stream = BufferedOutputStream(raw)
                 stream.write("$MAGIC\n${Base64.encodeToString(salt, Base64.NO_WRAP)}\n${Base64.encodeToString(iv, Base64.NO_WRAP)}\n".toByteArray(Charsets.UTF_8))
@@ -74,6 +74,19 @@ object NotificationBackup {
         } finally {
             temp.delete()
         }
+    }
+
+    private fun createExportTempFile(context: Context): File {
+        val encryptedBytes = MAX_PLAINTEXT_BYTES.toLong() + 16
+        val encodedBytes = ((encryptedBytes + 2) / 3) * 4
+        val headerBytes = MAGIC.toByteArray(Charsets.UTF_8).size + 1 + 24 + 1 + 16 + 1
+        val requiredBytes = encodedBytes + headerBytes
+        val directory = listOfNotNull(context.filesDir, context.getExternalFilesDir(null))
+            .distinctBy { it.absolutePath }
+            .filter { (it.isDirectory || it.mkdirs()) && it.usableSpace >= requiredBytes }
+            .maxByOrNull { it.usableSpace }
+            ?: throw IOException("Not enough storage space to export backup")
+        return File.createTempFile("notisave-export-", ".nsb", directory)
     }
 
     fun import(context: Context, uri: android.net.Uri, password: CharArray): Int {
