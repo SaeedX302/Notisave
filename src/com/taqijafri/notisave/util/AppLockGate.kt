@@ -43,7 +43,12 @@ object AppLockGate {
     fun authenticate(activity: Activity, onSuccess: () -> Unit, onEnded: () -> Unit = {}) {
         if (Build.VERSION.SDK_INT < 29 ||
             !(activity.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure) {
-            Toast.makeText(activity, R.string.app_lock_unavailable, Toast.LENGTH_LONG).show()
+            val message = if (Build.VERSION.SDK_INT < 29) {
+                R.string.app_lock_unavailable
+            } else {
+                R.string.app_lock_setup_device
+            }
+            Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
             Prefs(activity).appLockEnabled = false
             reset(activity)
             onSuccess()
