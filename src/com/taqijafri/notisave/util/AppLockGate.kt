@@ -10,12 +10,21 @@ import com.taqijafri.notisave.R
 import com.taqijafri.notisave.data.Prefs
 
 object AppLockGate {
+    private var lastUnlockAt: Long? = null
+
     fun requiresUnlock(context: Context): Boolean {
         val prefs = Prefs(context)
-        if (!prefs.appLockEnabled) return false
-        if (prefs.lastUnlockAt == 0L) return true
-        val elapsed = SystemClock.elapsedRealtime() - prefs.lastUnlockAt
+        if (!prefs.appLockEnabled) {
+            lastUnlockAt = null
+            return false
+        }
+        val unlockedAt = lastUnlockAt ?: return true
+        val elapsed = SystemClock.elapsedRealtime() - unlockedAt
         return elapsed !in 0..30_000L
+    }
+
+    fun reset() {
+        lastUnlockAt = null
     }
 
     fun authenticate(activity: Activity, onSuccess: () -> Unit) {
@@ -33,7 +42,7 @@ object AppLockGate {
             .authenticate(activity.mainExecutor,
                 object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
-                        Prefs(activity).lastUnlockAt = SystemClock.elapsedRealtime()
+                        lastUnlockAt = SystemClock.elapsedRealtime()
                         onSuccess()
                     }
 
