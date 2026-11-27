@@ -213,32 +213,46 @@ class SettingsFragment : Fragment() {
             }
             val password = pendingPassword ?: return
             pendingPassword = null
-            runBackupTask(password) {
-                NotificationBackup.export(activity.applicationContext, data.data!!, password)
-                activity.getString(R.string.backup_export_done)
+            val uri = data.data!!
+            runBackupTask(password, { getString(R.string.backup_export_done) }) { appContext ->
+                NotificationBackup.export(appContext, uri, password)
+                null
             }
         } else if (requestCode == restoreBackupRequest) {
             if (resultCode != Activity.RESULT_OK || data?.data == null) return
+            val uri = data.data!!
             askBackupPassword { password ->
-                runBackupTask(password) {
-                    val count = NotificationBackup.import(activity.applicationContext, data.data!!, password)
-                    activity.getString(R.string.backup_import_done, count)
+                runBackupTask(password, { count -> getString(R.string.backup_import_done, count) }) { appContext ->
+                    NotificationBackup.import(appContext, uri, password)
                 }
             }
         }
     }
 
-    private fun runBackupTask(password: CharArray, work: () -> String) {
-        Toast.makeText(activity, R.string.backup_working, Toast.LENGTH_SHORT).show()
+    private fun runBackupTask(
+        password: CharArray,
+        successMessage: (Int?) -> String,
+        work: (android.content.Context) -> Int?
+    ) {
         val owner = activity ?: run { password.fill('\u0000'); return }
+        val appContext = owner.applicationContext
+        Toast.makeText(owner, R.string.backup_working, Toast.LENGTH_SHORT).show()
         Thread {
-            val message = try { work() } catch (e: Exception) {
-                getString(R.string.backup_failed, e.message ?: "")
-            } finally { password.fill('\u0000') }
+            val result = try {
+                Result.success(work(appContext))
+            } catch (error: Exception) {
+                Result.failure<Int?>(error)
+            } finally {
+                password.fill('\u0000')
+            }
             owner.runOnUiThread {
-                if (!isAdded) return@runOnUiThread
-                Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
-                (activity as? MainActivity)?.refreshBadge()
+                if (!isAdded || activity !== owner) return@runOnUiThread
+                val message = result.fold(
+                    { successMessage(it) },
+                    { owner.getString(R.string.backup_failed, it.message ?: "") }
+                )
+                Toast.makeText(owner, message, Toast.LENGTH_LONG).show()
+                (owner as? MainActivity)?.refreshBadge()
             }
         }.start()
     }

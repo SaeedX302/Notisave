@@ -107,9 +107,11 @@ class MainActivity : Activity() {
             lockContentView?.visibility = View.INVISIBLE
             if (!authInProgress) {
                 authInProgress = true
-                AppLockGate.authenticate(this) {
+                AppLockGate.authenticate(this, {
                     authInProgress = false
                     lockContentView?.visibility = View.VISIBLE
+                }) {
+                    authInProgress = false
                 }
             }
         } else {

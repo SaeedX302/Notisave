@@ -40,18 +40,27 @@ object AppLockGate {
         }
     }
 
-    fun authenticate(activity: Activity, onSuccess: () -> Unit) {
+    fun authenticate(activity: Activity, onSuccess: () -> Unit, onEnded: () -> Unit = {}) {
         if (Build.VERSION.SDK_INT < 29 ||
             !(activity.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure) {
             Toast.makeText(activity, R.string.app_lock_unavailable, Toast.LENGTH_LONG).show()
-            activity.finish()
+            Prefs(activity).appLockEnabled = false
+            reset(activity)
+            onSuccess()
             return
         }
-        android.hardware.biometrics.BiometricPrompt.Builder(activity)
+        val builder = android.hardware.biometrics.BiometricPrompt.Builder(activity)
             .setTitle(activity.getString(R.string.app_lock_title))
             .setDescription(activity.getString(R.string.app_lock_message))
-            .setDeviceCredentialAllowed(true)
-            .build()
+        if (Build.VERSION.SDK_INT >= 30) {
+            builder.setAllowedAuthenticators(
+                android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
+        } else {
+            builder.setDeviceCredentialAllowed(true)
+        }
+        builder.build()
             .authenticate(activity.mainExecutor,
                 object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
@@ -70,7 +79,10 @@ object AppLockGate {
                     }
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
-                        activity.finish()
+                        if (errorCode != 5 && errorCode != 10 && errorCode != 13) {
+                            Toast.makeText(activity, errString ?: activity.getString(R.string.app_lock_unavailable), Toast.LENGTH_LONG).show()
+                        }
+                        onEnded()
                     }
                 })
     }
