@@ -128,6 +128,7 @@
     <string name="pause_capture">Pause notification saving</string>
     <string name="redact_previews">Hide message previews in history</string>
     <string name="capture_paused">Notification saving paused</string>
+    <string name="filter_unread">Unread only</string>
 
     <!-- First run -->
     <string name="welcome_title">Welcome to Notisave</string>
