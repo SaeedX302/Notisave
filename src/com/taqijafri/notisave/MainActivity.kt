@@ -117,15 +117,7 @@ class MainActivity : Activity() {
         else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (::prefs.isInitialized && AppLockGate.requiresUnlock(this)) {
             lockContentView?.visibility = View.INVISIBLE
-            if (!authInProgress) {
-                authInProgress = true
-                AppLockGate.authenticate(this, {
-                    authInProgress = false
-                    lockContentView?.visibility = View.VISIBLE
-                }) {
-                    authInProgress = false
-                }
-            }
+            if (!authInProgress) authenticateForLock()
         } else {
             lockContentView?.visibility = View.VISIBLE
         }
@@ -135,6 +127,20 @@ class MainActivity : Activity() {
     override fun onPause() {
         super.onPause()
         if (::prefs.isInitialized && prefs.appLockEnabled) lockContentView?.visibility = View.INVISIBLE
+    }
+
+    private fun authenticateForLock() {
+        if (authInProgress || isFinishing) return
+        authInProgress = true
+        AppLockGate.authenticate(this, {
+            authInProgress = false
+            lockContentView?.visibility = View.VISIBLE
+        }) {
+            AppLockGate.showRetryDialog(this) {
+                authInProgress = false
+                authenticateForLock()
+            }
+        }
     }
 
     fun selectTab(index: Int) {

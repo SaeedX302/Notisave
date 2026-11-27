@@ -12,6 +12,10 @@ import android.database.sqlite.SQLiteOpenHelper
 class NotiDbHelper private constructor(context: Context) :
     SQLiteOpenHelper(context.applicationContext, DB_NAME, null, DB_VERSION) {
 
+    init {
+        setWriteAheadLoggingEnabled(true)
+    }
+
     companion object {
         const val DB_NAME = "notisave.db"
         private const val DB_VERSION = 1
@@ -151,13 +155,11 @@ class NotiDbHelper private constructor(context: Context) :
         return out
     }
 
-    fun <T> withReadSnapshot(block: () -> T): T {
-        val db = readableDatabase
-        db.beginTransactionNonExclusive()
-        return try {
-            block().also { db.setTransactionSuccessful() }
-        } finally {
-            db.endTransaction()
+    fun forEachNotificationSnapshot(action: (SavedNotification) -> Unit) {
+        readableDatabase.rawQuery(
+            "SELECT * FROM $T_NOTI ORDER BY post_time DESC, id DESC", null
+        ).use { cursor ->
+            while (cursor.moveToNext()) action(rowToNotification(cursor))
         }
     }
 

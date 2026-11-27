@@ -10,7 +10,6 @@ import com.taqijafri.notisave.data.SavedNotification
 import org.json.JSONObject
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
-import java.io.OutputStreamWriter
 import java.io.FilterOutputStream
 import javax.crypto.CipherOutputStream
 import java.io.OutputStream
@@ -37,6 +36,25 @@ object NotificationBackup {
 
     fun export(context: Context, uri: android.net.Uri, password: CharArray) {
         require(password.size >= 8) { "Use a password with at least 8 characters" }
+        val plaintext = ByteArrayOutputStream()
+        plaintext.write('['.code)
+        var recordCount = 0
+        var plainBytes = 2L
+        NotiDbHelper.getInstance(context).forEachNotificationSnapshot { item ->
+            val record = JSONObject().apply {
+                put("package", item.packageName); put("app", item.appName)
+                put("title", item.title); put("text", item.text); put("bigText", item.bigText)
+                put("time", item.postTime); put("read", item.isRead)
+            }.toString().toByteArray(Charsets.UTF_8)
+            val delimiterBytes = if (recordCount > 0) 1 else 0
+            plainBytes += record.size + delimiterBytes
+            require(plainBytes <= MAX_PLAINTEXT_BYTES) { "History is too large to export" }
+            require(++recordCount <= 100_000) { "History contains too many records" }
+            if (delimiterBytes != 0) plaintext.write(','.code)
+            plaintext.write(record)
+        }
+        plaintext.write(']'.code)
+
         val salt = ByteArray(16).also(SecureRandom()::nextBytes)
         val iv = ByteArray(12).also(SecureRandom()::nextBytes)
         val key = deriveKey(password, salt)
@@ -47,36 +65,7 @@ object NotificationBackup {
             stream.write("$MAGIC\n${Base64.encodeToString(salt, Base64.NO_WRAP)}\n${Base64.encodeToString(iv, Base64.NO_WRAP)}\n".toByteArray(Charsets.UTF_8))
             val encoded = Base64OutputStream(NonClosingOutputStream(stream), Base64.NO_WRAP)
             CipherOutputStream(encoded, cipher).use { encrypted ->
-                val writer = OutputStreamWriter(encrypted, Charsets.UTF_8)
-                writer.write("[")
-                val db = NotiDbHelper.getInstance(context)
-                db.withReadSnapshot {
-                    var offset = 0
-                    var first = true
-                    var recordCount = 0
-                    var plainBytes = 2L
-                    while (true) {
-                        val page = db.getNotifications(null, null, PAGE_SIZE, offset = offset)
-                        for (item in page) {
-                            val hasPrevious = !first
-                            if (hasPrevious) writer.write(",")
-                            first = false
-                            val record = JSONObject().apply {
-                                put("package", item.packageName); put("app", item.appName)
-                                put("title", item.title); put("text", item.text); put("bigText", item.bigText)
-                                put("time", item.postTime); put("read", item.isRead)
-                            }.toString()
-                            plainBytes += record.toByteArray(Charsets.UTF_8).size + if (hasPrevious) 1 else 0
-                            require(plainBytes <= MAX_PLAINTEXT_BYTES) { "History is too large to export" }
-                            require(++recordCount <= 100_000) { "History contains too many records" }
-                            writer.write(record)
-                        }
-                        if (page.size < PAGE_SIZE) break
-                        offset += page.size
-                    }
-                }
-                writer.write("]")
-                writer.flush()
+                plaintext.writeTo(encrypted)
             }
             stream.flush()
         }
