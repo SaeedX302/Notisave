@@ -105,6 +105,8 @@ class NotificationsFragment : Fragment() {
                 reload()
             }
         })
+        view.findViewById<ImageButton>(R.id.btn_clear_search).visibility =
+            if (currentQuery.isEmpty()) View.GONE else View.VISIBLE
         view.findViewById<ImageButton>(R.id.btn_clear_search).setOnClickListener {
             searchBox.setText("")
         }

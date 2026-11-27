@@ -138,6 +138,7 @@
     <string name="app_lock">Lock Notisave</string>
     <string name="app_lock_title">Unlock Notisave</string>
     <string name="app_lock_message">Confirm your screen lock or biometric to view saved notifications.</string>
+    <string name="app_lock_retry_message">Authentication was cancelled or failed. Try again to unlock, or exit the app.</string>
     <string name="app_lock_unavailable">App lock requires Android 10 or later.</string>
     <string name="app_lock_setup_device">Set a secure screen lock on your device to enable app lock.</string>
     <string name="backup_section">Encrypted backup</string>
@@ -164,6 +165,7 @@
     <string name="welcome_title">Welcome to Notisave</string>
     <string name="welcome_msg">Notisave saves your notifications on this device so you can read them later — even after they are cleared or a message is deleted.\n\nTo start, grant Notification Access on the next screen.</string>
     <string name="btn_continue">Continue</string>
+    <string name="btn_retry">Try Again</string>
     <string name="btn_not_now">Not Now</string>
     <string name="privacy_dialog_title">Privacy Notice</string>
     <string name="btn_understand">I Understand</string>

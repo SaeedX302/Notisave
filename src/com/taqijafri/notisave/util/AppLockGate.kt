@@ -1,6 +1,7 @@
 package com.taqijafri.notisave.util
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.KeyguardManager
 import android.content.Context
 import android.os.Build
@@ -60,14 +61,14 @@ object AppLockGate {
             .setDescription(activity.getString(R.string.app_lock_message))
         if (Build.VERSION.SDK_INT >= 30) {
             builder.setAllowedAuthenticators(
-                android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK or
                     android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
             )
         } else {
             builder.setDeviceCredentialAllowed(true)
         }
         builder.build()
-            .authenticate(activity.mainExecutor,
+            .authenticate(android.os.CancellationSignal(), activity.mainExecutor,
                 object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
                         val unlockedAt = SystemClock.elapsedRealtime()
@@ -91,5 +92,16 @@ object AppLockGate {
                         onEnded()
                     }
                 })
+    }
+
+    fun showRetryDialog(activity: Activity, onRetry: () -> Unit) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.app_lock_title)
+            .setMessage(R.string.app_lock_retry_message)
+            .setPositiveButton(R.string.btn_retry) { _, _ -> onRetry() }
+            .setNegativeButton(R.string.btn_cancel) { _, _ -> activity.finish() }
+            .setOnCancelListener { activity.finish() }
+            .show()
     }
 }

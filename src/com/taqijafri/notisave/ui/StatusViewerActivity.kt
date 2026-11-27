@@ -24,6 +24,7 @@ import com.taqijafri.notisave.data.Prefs
 class StatusViewerActivity : Activity() {
     private var lockedContent: View? = null
     private var lockPromptShown = false
+    private var lockAuthInProgress = false
     private var videoPrepared = false
 
     companion object {
@@ -134,12 +135,7 @@ class StatusViewerActivity : Activity() {
         else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (AppLockGate.requiresUnlock(this)) {
             lockedContent?.visibility = View.INVISIBLE
-            if (!lockPromptShown) {
-                lockPromptShown = true
-                AppLockGate.authenticate(this,
-                    { revealContent() },
-                    { lockPromptShown = false })
-            }
+            if (!lockAuthInProgress && !lockPromptShown) authenticateForLock()
         } else revealContent()
     }
 
@@ -147,6 +143,23 @@ class StatusViewerActivity : Activity() {
         lockedContent?.visibility = View.VISIBLE
         if (videoPrepared && status.isVideo && !AppLockGate.requiresUnlock(this)) {
             findViewById<VideoView>(R.id.viewer_video).start()
+        }
+    }
+
+    private fun authenticateForLock() {
+        if (lockAuthInProgress || isFinishing) return
+        lockAuthInProgress = true
+        lockPromptShown = true
+        AppLockGate.authenticate(this, {
+            lockAuthInProgress = false
+            lockPromptShown = false
+            revealContent()
+        }) {
+            AppLockGate.showRetryDialog(this) {
+                lockAuthInProgress = false
+                lockPromptShown = false
+                authenticateForLock()
+            }
         }
     }
 }
