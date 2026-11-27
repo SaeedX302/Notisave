@@ -103,11 +103,21 @@ class NotiDbHelper private constructor(context: Context) :
      * Notifications newest-first, optionally filtered by package and/or search text.
      * Search matches app name, sender (title) and message content.
      */
-    fun getNotifications(packageFilter: String?, query: String?, limit: Int = 500, unreadOnly: Boolean = false): List<SavedNotification> {
+    fun getNotifications(packageFilter: String?, query: String?, limit: Int = 500, unreadOnly: Boolean = false, fromMs: Long? = null, toMs: Long? = null): List<SavedNotification> {
         val where = StringBuilder()
         val args = ArrayList<String>()
         if (unreadOnly) {
             where.append("is_read=0")
+        }
+        if (fromMs != null) {
+            if (where.isNotEmpty()) where.append(" AND ")
+            where.append("post_time>=?")
+            args.add(fromMs.toString())
+        }
+        if (toMs != null) {
+            if (where.isNotEmpty()) where.append(" AND ")
+            where.append("post_time<?")
+            args.add(toMs.toString())
         }
         if (!packageFilter.isNullOrBlank()) {
             where.append("package_name=?")
@@ -130,6 +140,36 @@ class NotiDbHelper private constructor(context: Context) :
     }
 
     fun getRecent(limit: Int = 5): List<SavedNotification> = getNotifications(null, null, limit)
+
+    fun getAllNotifications(): List<SavedNotification> {
+        val c = readableDatabase.rawQuery("SELECT * FROM $T_NOTI ORDER BY post_time DESC", null)
+        val out = ArrayList<SavedNotification>()
+        while (c.moveToNext()) out.add(rowToNotification(c))
+        c.close()
+        return out
+    }
+
+    fun restoreNotifications(items: List<SavedNotification>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            for (n in items) {
+                val values = ContentValues().apply {
+                    put("package_name", n.packageName)
+                    put("app_name", n.appName)
+                    put("title", n.title)
+                    put("text", n.text)
+                    put("big_text", n.bigText)
+                    put("post_time", n.postTime)
+                    put("is_read", if (n.isRead) 1 else 0)
+                }
+                db.insert(T_NOTI, null, values)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
 
     fun getById(id: Long): SavedNotification? {
         val c = readableDatabase.rawQuery(
