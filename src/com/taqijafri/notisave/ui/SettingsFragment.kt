@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.Switch
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -32,6 +33,18 @@ class SettingsFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_settings, container, false)
         db = NotiDbHelper.getInstance(activity)
         prefs = Prefs(activity)
+
+        view.findViewById<Switch>(R.id.switch_capture_pause).apply {
+            isChecked = prefs.capturePaused
+            setOnCheckedChangeListener { _, enabled -> prefs.capturePaused = enabled }
+        }
+        view.findViewById<Switch>(R.id.switch_redact_previews).apply {
+            isChecked = prefs.redactPreviews
+            setOnCheckedChangeListener { _, enabled ->
+                prefs.redactPreviews = enabled
+                (activity as? MainActivity)?.recreate()
+            }
+        }
 
         // --- theme ---
         val themeGroup = view.findViewById<RadioGroup>(R.id.theme_group)
