@@ -122,6 +122,10 @@
     <string name="home_statuses_subtitle">View and save statuses</string>
     <string name="btn_open">Open</string>
     <string name="viewer_saved">Saved ✓</string>
+    <string name="preview_hidden">Preview hidden</string>
+    <string name="pause_capture">Pause notification saving</string>
+    <string name="redact_previews">Hide message previews in history</string>
+    <string name="capture_paused">Notification saving paused</string>
 
     <!-- First run -->
     <string name="welcome_title">Welcome to Notisave</string>

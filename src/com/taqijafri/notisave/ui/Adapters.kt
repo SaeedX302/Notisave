@@ -13,6 +13,7 @@ import android.widget.TextView
 import com.taqijafri.notisave.R
 import com.taqijafri.notisave.data.AppEntry
 import com.taqijafri.notisave.data.SavedNotification
+import com.taqijafri.notisave.data.Prefs
 import com.taqijafri.notisave.util.AppInfo
 import com.taqijafri.notisave.util.TimeUtils
 
@@ -61,8 +62,10 @@ class NotificationAdapter(
 
         appName.text = n.appName
         time.text = TimeUtils.relativeTime(n.postTime)
-        title.text = if (n.title.isNotBlank()) n.title else n.appName
-        text.text = n.text
+        val redact = Prefs(context).redactPreviews
+        title.text = if (redact) context.getString(R.string.preview_hidden)
+            else if (n.title.isNotBlank()) n.title else n.appName
+        text.text = if (redact) context.getString(R.string.preview_hidden) else n.text
         dot.visibility = if (n.isRead) View.GONE else View.VISIBLE
 
         view.setOnClickListener { onItemClick(n) }
