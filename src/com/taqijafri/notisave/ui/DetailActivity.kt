@@ -21,7 +21,6 @@ import com.taqijafri.notisave.util.TimeUtils
 /** Full view of one saved notification. */
 class DetailActivity : Activity() {
     private var lockedContent: View? = null
-    private var lockPromptShown = false
     private var lockAuthInProgress = false
 
     companion object {
@@ -95,7 +94,7 @@ class DetailActivity : Activity() {
         else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (AppLockGate.requiresUnlock(this)) {
             lockedContent?.visibility = View.INVISIBLE
-            if (!lockAuthInProgress && !lockPromptShown) authenticateForLock()
+            if (!lockAuthInProgress) authenticateForLock()
         } else lockedContent?.visibility = View.VISIBLE
     }
 
@@ -103,24 +102,15 @@ class DetailActivity : Activity() {
         super.onPause()
         if (Prefs(this).appLockEnabled) {
             lockedContent?.visibility = View.INVISIBLE
-            lockPromptShown = false
         }
     }
 
     private fun authenticateForLock() {
         if (lockAuthInProgress || isFinishing) return
         lockAuthInProgress = true
-        lockPromptShown = true
-        AppLockGate.authenticate(this, {
+        AppLockGate.authenticateWithRetry(this) {
             lockAuthInProgress = false
-            lockPromptShown = false
             lockedContent?.visibility = View.VISIBLE
-        }) {
-            AppLockGate.showRetryDialog(this) {
-                lockAuthInProgress = false
-                lockPromptShown = false
-                authenticateForLock()
-            }
         }
     }
 }

@@ -132,14 +132,9 @@ class MainActivity : Activity() {
     private fun authenticateForLock() {
         if (authInProgress || isFinishing) return
         authInProgress = true
-        AppLockGate.authenticate(this, {
+        AppLockGate.authenticateWithRetry(this) {
             authInProgress = false
             lockContentView?.visibility = View.VISIBLE
-        }) {
-            AppLockGate.showRetryDialog(this) {
-                authInProgress = false
-                authenticateForLock()
-            }
         }
     }
 

@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import java.io.File
 
 /**
  * Local SQLite storage for saved notifications.
@@ -306,7 +307,8 @@ class NotiDbHelper private constructor(context: Context) :
     // ---------- storage ----------
 
     fun getDbSizeBytes(context: Context): Long {
-        val f = context.getDatabasePath(DB_NAME)
-        return if (f.exists()) f.length() else 0L
+        val database = context.getDatabasePath(DB_NAME)
+        return listOf(database, File("${database.path}-wal"), File("${database.path}-shm"))
+            .sumOf { if (it.exists()) it.length() else 0L }
     }
 }
