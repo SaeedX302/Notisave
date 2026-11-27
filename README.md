@@ -50,9 +50,12 @@ Produces a signed `Notisave.apk` (release keystore: `notisave-release.keystore`)
 ## Privacy
 
 Notifications may contain personal information. Notisave stores them only in a
-local database on the device and never uploads them. It does not bypass
-encryption or access private app databases, and it cannot recover messages
-that were never delivered as notifications.
+local database on the device and never uploads them. Optional backups are
+password-encrypted with AES-GCM; keep the password safe because it cannot be
+recovered. App lock uses Android device authentication (Android 10+). Notification
+history can be filtered to today, the last 7 days, or the last 30 days. The app
+does not bypass encryption or access private app databases, and it cannot recover
+messages that were never delivered as notifications.
 
 ## Developer
 
