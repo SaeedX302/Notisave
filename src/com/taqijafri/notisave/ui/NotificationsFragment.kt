@@ -18,6 +18,9 @@ import android.widget.ListView
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.Spinner
+import android.widget.AdapterView
+import java.util.Calendar
 import com.taqijafri.notisave.R
 import com.taqijafri.notisave.data.NotiDbHelper
 import com.taqijafri.notisave.data.SavedNotification
@@ -41,6 +44,7 @@ class NotificationsFragment : Fragment() {
     private var deletedMode: Boolean = false
     private var currentQuery: String = ""
     private var unreadOnly = false
+    private var dateRange = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -57,6 +61,14 @@ class NotificationsFragment : Fragment() {
             unreadOnly = checked
             reload()
         }
+        view.findViewById<Spinner>(R.id.date_range_filter).onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
+                override fun onItemSelected(parent: AdapterView<*>?, v: View?, position: Int, id: Long) {
+                    dateRange = position
+                    reload()
+                }
+            }
 
         adapter = NotificationAdapter(
             activity,
@@ -103,10 +115,19 @@ class NotificationsFragment : Fragment() {
 
     fun reload() {
         if (!::db.isInitialized) return
+        val now = System.currentTimeMillis()
+        val start = when (dateRange) {
+            1 -> Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+            2 -> now - 7L * 24 * 60 * 60 * 1000
+            3 -> now - 30L * 24 * 60 * 60 * 1000
+            else -> null
+        }
         val raw = db.getNotifications(
             packageFilter = selectedPackage,
             query = currentQuery.ifBlank { null },
-            unreadOnly = unreadOnly
+            unreadOnly = unreadOnly,
+            fromMs = start,
+            toMs = if (dateRange == 1) now + 1 else null
         )
         val items = if (deletedMode) {
             raw.filter { it.packageName in Constants.WHATSAPP_PACKAGES }

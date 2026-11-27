@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.app.Fragment
 import android.os.Build
-import android.os.SystemClock
 import android.app.KeyguardManager
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -101,7 +100,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::prefs.isInitialized && prefs.appLockEnabled &&
-            SystemClock.elapsedRealtime() - prefs.lastUnlockAt > 30_000L && !authInProgress) {
+            System.currentTimeMillis() - prefs.lastUnlockAt > 30_000L && !authInProgress) {
             prefs.lastUnlockAt = 0L
             authenticateForApp()
         }
@@ -110,7 +109,7 @@ class MainActivity : Activity() {
 
     private fun authenticateForApp() {
         authInProgress = true
-        if (Build.VERSION.SDK_INT < 28) {
+        if (Build.VERSION.SDK_INT < 29) {
             AlertDialog.Builder(this).setMessage(R.string.app_lock_unavailable)
                 .setPositiveButton(R.string.btn_understand) { _, _ -> prefs.appLockEnabled = false; finish() }
                 .setCancelable(false).show()
@@ -130,7 +129,7 @@ class MainActivity : Activity() {
             .authenticate(mainExecutor, object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
                     authInProgress = false
-                    prefs.lastUnlockAt = SystemClock.elapsedRealtime()
+                    prefs.lastUnlockAt = System.currentTimeMillis()
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
