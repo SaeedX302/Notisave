@@ -130,7 +130,9 @@ class StatusViewerActivity : Activity() {
             lockedContent?.visibility = View.INVISIBLE
             if (!lockPromptShown) {
                 lockPromptShown = true
-                AppLockGate.authenticate(this) { lockedContent?.visibility = View.VISIBLE }
+                AppLockGate.authenticate(this,
+                    { lockedContent?.visibility = View.VISIBLE },
+                    { lockPromptShown = false })
             }
         } else lockedContent?.visibility = View.VISIBLE
     }

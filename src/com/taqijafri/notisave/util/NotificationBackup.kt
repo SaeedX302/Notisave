@@ -31,7 +31,7 @@ object NotificationBackup {
     private const val MAGIC = "NOTISAVE-ENC-1"
     private const val ITERATIONS = 210_000
     private const val MAX_BACKUP_BYTES = 64 * 1024 * 1024
-    private const val MAX_PLAINTEXT_BYTES = 48 * 1024 * 1024
+    private const val MAX_PLAINTEXT_BYTES = 45 * 1024 * 1024
     private const val PAGE_SIZE = 500
 
     fun export(context: Context, uri: android.net.Uri, password: CharArray) {
