@@ -34,16 +34,21 @@ class MainActivity : Activity() {
         const val TAB_STATUSES = 2
         const val TAB_APPS = 3
         const val TAB_SETTINGS = 4
+        private const val TAG_HOME = "tab_home"
+        private const val TAG_NOTIFICATIONS = "tab_notifications"
+        private const val TAG_STATUSES = "tab_statuses"
+        private const val TAG_APPS = "tab_apps"
+        private const val TAG_SETTINGS = "tab_settings"
     }
 
     private lateinit var prefs: Prefs
     private lateinit var db: NotiDbHelper
 
-    private val homeFragment = HomeFragment()
-    private val notificationsFragment = NotificationsFragment()
-    private val statusesFragment = StatusesFragment()
-    private val appsFragment = AppsFragment()
-    private val settingsFragment = SettingsFragment()
+    private lateinit var homeFragment: HomeFragment
+    private lateinit var notificationsFragment: NotificationsFragment
+    private lateinit var statusesFragment: StatusesFragment
+    private lateinit var appsFragment: AppsFragment
+    private lateinit var settingsFragment: SettingsFragment
 
     private var currentTab = -1
 
@@ -58,6 +63,11 @@ class MainActivity : Activity() {
         ThemeHelper.applyTheme(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        homeFragment = fragment(TAG_HOME) { HomeFragment() }
+        notificationsFragment = fragment(TAG_NOTIFICATIONS) { NotificationsFragment() }
+        statusesFragment = fragment(TAG_STATUSES) { StatusesFragment() }
+        appsFragment = fragment(TAG_APPS) { AppsFragment() }
+        settingsFragment = fragment(TAG_SETTINGS) { SettingsFragment() }
         if (Prefs(this).appLockEnabled) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         lockContentView = findViewById(android.R.id.content)
         if (Prefs(this).appLockEnabled) lockContentView?.visibility = View.INVISIBLE
@@ -130,6 +140,13 @@ class MainActivity : Activity() {
     fun selectTab(index: Int) {
         if (index == currentTab) return
         currentTab = index
+        val tag = when (index) {
+            TAB_NOTIFICATIONS -> TAG_NOTIFICATIONS
+            TAB_STATUSES -> TAG_STATUSES
+            TAB_APPS -> TAG_APPS
+            TAB_SETTINGS -> TAG_SETTINGS
+            else -> TAG_HOME
+        }
         val fragment: Fragment = when (index) {
             TAB_NOTIFICATIONS -> notificationsFragment
             TAB_STATUSES -> statusesFragment
@@ -138,7 +155,7 @@ class MainActivity : Activity() {
             else -> homeFragment
         }
         fragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment)
+            .replace(R.id.fragment_container, fragment, tag)
             .commit()
         updateNavAppearance()
         refreshBadge()
@@ -172,6 +189,9 @@ class MainActivity : Activity() {
             label.setTextColor(if (i == currentTab) selectedColor else unselectedColor)
         }
     }
+
+    private fun <T : Fragment> fragment(tag: String, create: () -> T): T =
+        (fragmentManager.findFragmentByTag(tag) as? T) ?: create()
 
     private fun showWelcomeIfFirstRun() {
         if (prefs.privacyShown) return
