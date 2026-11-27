@@ -103,9 +103,12 @@ class NotiDbHelper private constructor(context: Context) :
      * Notifications newest-first, optionally filtered by package and/or search text.
      * Search matches app name, sender (title) and message content.
      */
-    fun getNotifications(packageFilter: String?, query: String?, limit: Int = 500): List<SavedNotification> {
+    fun getNotifications(packageFilter: String?, query: String?, limit: Int = 500, unreadOnly: Boolean = false): List<SavedNotification> {
         val where = StringBuilder()
         val args = ArrayList<String>()
+        if (unreadOnly) {
+            where.append("is_read=0")
+        }
         if (!packageFilter.isNullOrBlank()) {
             where.append("package_name=?")
             args.add(packageFilter)

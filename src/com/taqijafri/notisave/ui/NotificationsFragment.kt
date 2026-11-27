@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.CheckBox
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ListView
@@ -39,6 +40,7 @@ class NotificationsFragment : Fragment() {
     private var selectedPackage: String? = null
     private var deletedMode: Boolean = false
     private var currentQuery: String = ""
+    private var unreadOnly = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -51,6 +53,10 @@ class NotificationsFragment : Fragment() {
         chipRow = view.findViewById(R.id.chip_row)
         deletedNote = view.findViewById(R.id.deleted_note)
         searchBox = view.findViewById(R.id.search_box)
+        view.findViewById<CheckBox>(R.id.filter_unread).setOnCheckedChangeListener { _, checked ->
+            unreadOnly = checked
+            reload()
+        }
 
         adapter = NotificationAdapter(
             activity,
@@ -99,7 +105,8 @@ class NotificationsFragment : Fragment() {
         if (!::db.isInitialized) return
         val raw = db.getNotifications(
             packageFilter = selectedPackage,
-            query = currentQuery.ifBlank { null }
+            query = currentQuery.ifBlank { null },
+            unreadOnly = unreadOnly
         )
         val items = if (deletedMode) {
             raw.filter { it.packageName in Constants.WHATSAPP_PACKAGES }
