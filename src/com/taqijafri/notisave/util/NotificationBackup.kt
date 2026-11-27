@@ -41,30 +41,38 @@ object NotificationBackup {
         val key = deriveKey(password, salt)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, iv))
-        context.contentResolver.openOutputStream(uri, "w")!!.use { raw ->
-            val stream = BufferedOutputStream(raw)
-            stream.write("$MAGIC\n${Base64.encodeToString(salt, Base64.NO_WRAP)}\n${Base64.encodeToString(iv, Base64.NO_WRAP)}\n".toByteArray(Charsets.UTF_8))
-            val encoded = Base64OutputStream(NonClosingOutputStream(stream), Base64.NO_WRAP)
-            CipherOutputStream(encoded, cipher).use { encrypted ->
-                encrypted.write('['.code)
-                var recordCount = 0
-                var plainBytes = 2L
-                NotiDbHelper.getInstance(context).forEachNotificationSnapshot { item ->
-                    val record = JSONObject().apply {
-                        put("package", item.packageName); put("app", item.appName)
-                        put("title", item.title); put("text", item.text); put("bigText", item.bigText)
-                        put("time", item.postTime); put("read", item.isRead)
-                    }.toString().toByteArray(Charsets.UTF_8)
-                    val delimiterBytes = if (recordCount > 0) 1 else 0
-                    plainBytes += record.size + delimiterBytes
-                    require(plainBytes <= MAX_PLAINTEXT_BYTES) { "History is too large to export" }
-                    require(++recordCount <= 100_000) { "History contains too many records" }
-                    if (delimiterBytes != 0) encrypted.write(','.code)
-                    encrypted.write(record)
+        val temp = File.createTempFile("notisave-export-", ".nsb", context.cacheDir)
+        try {
+            FileOutputStream(temp).use { raw ->
+                val stream = BufferedOutputStream(raw)
+                stream.write("$MAGIC\n${Base64.encodeToString(salt, Base64.NO_WRAP)}\n${Base64.encodeToString(iv, Base64.NO_WRAP)}\n".toByteArray(Charsets.UTF_8))
+                val encoded = Base64OutputStream(NonClosingOutputStream(stream), Base64.NO_WRAP)
+                CipherOutputStream(encoded, cipher).use { encrypted ->
+                    encrypted.write('['.code)
+                    var recordCount = 0
+                    var plainBytes = 2L
+                    NotiDbHelper.getInstance(context).forEachNotificationSnapshot { item ->
+                        val record = JSONObject().apply {
+                            put("package", item.packageName); put("app", item.appName)
+                            put("title", item.title); put("text", item.text); put("bigText", item.bigText)
+                            put("time", item.postTime); put("read", item.isRead)
+                        }.toString().toByteArray(Charsets.UTF_8)
+                        val delimiterBytes = if (recordCount > 0) 1 else 0
+                        plainBytes += record.size + delimiterBytes
+                        require(plainBytes <= MAX_PLAINTEXT_BYTES) { "History is too large to export" }
+                        require(++recordCount <= 100_000) { "History contains too many records" }
+                        if (delimiterBytes != 0) encrypted.write(','.code)
+                        encrypted.write(record)
+                    }
+                    encrypted.write(']'.code)
                 }
-                encrypted.write(']'.code)
+                stream.flush()
             }
-            stream.flush()
+            context.contentResolver.openOutputStream(uri, "w")!!.use { target ->
+                FileInputStream(temp).use { source -> source.copyTo(target) }
+            }
+        } finally {
+            temp.delete()
         }
     }
 
