@@ -81,6 +81,13 @@
         android:text="@string/filter_unread"
         android:textColor="?attr/textPrimary" />
 
+    <Spinner
+        android:id="@+id/date_range_filter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/date_range"
+        android:entries="@array/date_range_options" />
+
     <!-- Filter chips -->
     <HorizontalScrollView
         android:layout_width="match_parent"

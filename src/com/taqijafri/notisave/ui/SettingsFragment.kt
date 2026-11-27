@@ -57,7 +57,7 @@ class SettingsFragment : Fragment() {
         view.findViewById<Switch>(R.id.switch_app_lock).apply {
             isChecked = prefs.appLockEnabled
             setOnCheckedChangeListener { _, enabled ->
-                if (enabled && (android.os.Build.VERSION.SDK_INT < 28 ||
+                if (enabled && (android.os.Build.VERSION.SDK_INT < 29 ||
                     !(activity.getSystemService(android.content.Context.KEYGUARD_SERVICE) as android.app.KeyguardManager).isDeviceSecure)) {
                     isChecked = false
                     Toast.makeText(activity, R.string.app_lock_setup_device, Toast.LENGTH_LONG).show()
