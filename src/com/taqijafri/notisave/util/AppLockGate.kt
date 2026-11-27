@@ -104,4 +104,10 @@ object AppLockGate {
             .setOnCancelListener { activity.finish() }
             .show()
     }
+
+    fun authenticateWithRetry(activity: Activity, onSuccess: () -> Unit) {
+        authenticate(activity, onSuccess) {
+            showRetryDialog(activity) { authenticateWithRetry(activity, onSuccess) }
+        }
+    }
 }
