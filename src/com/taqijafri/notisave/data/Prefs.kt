@@ -44,6 +44,14 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("app_lock_enabled", false)
         set(v) = sp.edit().putBoolean("app_lock_enabled", v).apply()
 
+    var lastUnlockAt: Long
+        get() = sp.getLong("last_unlock_at", 0L)
+        set(v) = sp.edit().putLong("last_unlock_at", v).apply()
+
+    var lastUnlockBootCount: Int
+        get() = sp.getInt("last_unlock_boot_count", -1)
+        set(v) = sp.edit().putInt("last_unlock_boot_count", v).apply()
+
     /** Persisted SAF tree Uri of the WhatsApp folder chosen for status saving. */
     var statusFolderUri: String?
         get() = sp.getString("status_folder_uri", null)

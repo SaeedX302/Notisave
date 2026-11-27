@@ -60,7 +60,7 @@ class SettingsFragment : Fragment() {
                     isChecked = false
                     Toast.makeText(activity, R.string.app_lock_setup_device, Toast.LENGTH_LONG).show()
                 } else {
-                    AppLockGate.reset()
+                    AppLockGate.reset(activity)
                     prefs.appLockEnabled = enabled
                     if (enabled) (activity as? MainActivity)?.recreate()
                 }

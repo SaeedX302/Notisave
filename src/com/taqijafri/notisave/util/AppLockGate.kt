@@ -5,6 +5,7 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.os.Build
 import android.os.SystemClock
+import android.provider.Settings
 import android.widget.Toast
 import com.taqijafri.notisave.R
 import com.taqijafri.notisave.data.Prefs
@@ -15,16 +16,28 @@ object AppLockGate {
     fun requiresUnlock(context: Context): Boolean {
         val prefs = Prefs(context)
         if (!prefs.appLockEnabled) {
-            lastUnlockAt = null
+            reset(context)
             return false
         }
-        val unlockedAt = lastUnlockAt ?: return true
+        val bootCount = Settings.Global.getInt(
+            context.contentResolver, Settings.Global.BOOT_COUNT, -1
+        )
+        val unlockedAt = if (bootCount >= 0 && prefs.lastUnlockBootCount == bootCount) {
+            prefs.lastUnlockAt
+        } else {
+            lastUnlockAt ?: return true
+        }
+        if (unlockedAt == 0L) return true
         val elapsed = SystemClock.elapsedRealtime() - unlockedAt
         return elapsed !in 0..30_000L
     }
 
-    fun reset() {
+    fun reset(context: Context) {
         lastUnlockAt = null
+        Prefs(context).apply {
+            lastUnlockAt = 0L
+            lastUnlockBootCount = -1
+        }
     }
 
     fun authenticate(activity: Activity, onSuccess: () -> Unit) {
@@ -42,7 +55,17 @@ object AppLockGate {
             .authenticate(activity.mainExecutor,
                 object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
-                        lastUnlockAt = SystemClock.elapsedRealtime()
+                        val unlockedAt = SystemClock.elapsedRealtime()
+                        val bootCount = Settings.Global.getInt(
+                            activity.contentResolver, Settings.Global.BOOT_COUNT, -1
+                        )
+                        lastUnlockAt = unlockedAt
+                        if (bootCount >= 0) {
+                            Prefs(activity).apply {
+                                lastUnlockAt = unlockedAt
+                                lastUnlockBootCount = bootCount
+                            }
+                        }
                         onSuccess()
                     }
 
