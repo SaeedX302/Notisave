@@ -129,6 +129,8 @@
     <string name="redact_previews">Hide message previews in history</string>
     <string name="capture_paused">Notification saving paused</string>
     <string name="filter_unread">Unread only</string>
+    <string name="prune_confirm_title">Delete old notification history?</string>
+    <string name="prune_confirm_message">This permanently deletes notifications older than %1$d days.</string>
 
     <!-- First run -->
     <string name="welcome_title">Welcome to Notisave</string>
