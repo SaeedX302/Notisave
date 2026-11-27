@@ -47,6 +47,7 @@ object AppLockGate {
             Prefs(activity).appLockEnabled = false
             reset(activity)
             onSuccess()
+            activity.recreate()
             return
         }
         val builder = android.hardware.biometrics.BiometricPrompt.Builder(activity)

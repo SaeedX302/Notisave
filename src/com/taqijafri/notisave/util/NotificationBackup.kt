@@ -49,6 +49,7 @@ object NotificationBackup {
                 val writer = OutputStreamWriter(encrypted, Charsets.UTF_8)
                 writer.write("[")
                 val db = NotiDbHelper.getInstance(context)
+                db.withReadSnapshot {
                     var offset = 0
                     var first = true
                     var recordCount = 0
@@ -68,9 +69,10 @@ object NotificationBackup {
                             require(plainBytes <= MAX_PLAINTEXT_BYTES) { "History is too large to export" }
                             require(++recordCount <= 100_000) { "History contains too many records" }
                             writer.write(record)
+                        }
+                        if (page.size < PAGE_SIZE) break
+                        offset += page.size
                     }
-                    if (page.size < PAGE_SIZE) break
-                    offset += page.size
                 }
                 writer.write("]")
                 writer.flush()
@@ -101,27 +103,19 @@ object NotificationBackup {
                         output.write(buffer, 0, count)
                     }
                 }
-                FileInputStream(temp).use { cleartext ->
-                    JsonReader(InputStreamReader(cleartext, Charsets.UTF_8)).use { reader ->
-                        reader.beginArray()
-                        val db = NotiDbHelper.getInstance(context)
-                        val batch = ArrayList<SavedNotification>(PAGE_SIZE)
-                        var total = 0
-                        var recordsSeen = 0
-                        while (reader.hasNext()) {
-                            require(++recordsSeen <= 100_000) { "Backup contains too many records" }
-                            batch.add(readNotification(reader))
-                            if (batch.size == PAGE_SIZE) {
-                                total += db.restoreNotifications(batch)
-                                batch.clear()
-                            }
-                        }
-                        reader.endArray()
-                        require(reader.peek() == android.util.JsonToken.END_DOCUMENT) { "Unexpected data after backup" }
-                        if (batch.isNotEmpty()) total += db.restoreNotifications(batch)
-                        return total
+                forEachNotification(temp) { }
+                val db = NotiDbHelper.getInstance(context)
+                val batch = ArrayList<SavedNotification>(PAGE_SIZE)
+                var total = 0
+                forEachNotification(temp) { item ->
+                    batch.add(item)
+                    if (batch.size == PAGE_SIZE) {
+                        total += db.restoreNotifications(batch)
+                        batch.clear()
                     }
                 }
+                if (batch.isNotEmpty()) total += db.restoreNotifications(batch)
+                return total
             } finally {
                 temp.delete()
             }
@@ -165,6 +159,22 @@ object NotificationBackup {
             title = requireNotNull(title), text = requireNotNull(text), bigText = bigText,
             postTime = requireNotNull(postTime), isRead = isRead
         )
+    }
+
+    private fun forEachNotification(file: File, action: (SavedNotification) -> Unit): Int {
+        FileInputStream(file).use { cleartext ->
+            JsonReader(InputStreamReader(cleartext, Charsets.UTF_8)).use { reader ->
+                reader.beginArray()
+                var count = 0
+                while (reader.hasNext()) {
+                    require(++count <= 100_000) { "Backup contains too many records" }
+                    action(readNotification(reader))
+                }
+                reader.endArray()
+                require(reader.peek() == android.util.JsonToken.END_DOCUMENT) { "Unexpected data after backup" }
+                return count
+            }
+        }
     }
 
     private fun readLine(input: InputStream): String {

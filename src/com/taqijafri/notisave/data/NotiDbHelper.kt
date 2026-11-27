@@ -104,6 +104,7 @@ class NotiDbHelper private constructor(context: Context) :
      * Search matches app name, sender (title) and message content.
      */
     fun getNotifications(packageFilter: String?, query: String?, limit: Int = 500, unreadOnly: Boolean = false, fromMs: Long? = null, toMs: Long? = null, offset: Int = 0): List<SavedNotification> {
+        if (limit <= 0) return emptyList()
         val where = StringBuilder()
         val args = ArrayList<String>()
         fun addClause(clause: String) {
@@ -132,7 +133,7 @@ class NotiDbHelper private constructor(context: Context) :
         }
         val sql = "SELECT * FROM $T_NOTI" +
             (if (where.isNotEmpty()) " WHERE $where" else "") +
-            " ORDER BY post_time DESC, id DESC LIMIT ${limit.coerceAtLeast(1)} OFFSET ${offset.coerceAtLeast(0)}"
+            " ORDER BY post_time DESC, id DESC LIMIT $limit OFFSET ${offset.coerceAtLeast(0)}"
         val c = readableDatabase.rawQuery(sql, args.toTypedArray())
         val out = ArrayList<SavedNotification>()
         while (c.moveToNext()) out.add(rowToNotification(c))
@@ -148,6 +149,16 @@ class NotiDbHelper private constructor(context: Context) :
         while (c.moveToNext()) out.add(rowToNotification(c))
         c.close()
         return out
+    }
+
+    fun <T> withReadSnapshot(block: () -> T): T {
+        val db = readableDatabase
+        db.beginTransactionNonExclusive()
+        return try {
+            block().also { db.setTransactionSuccessful() }
+        } finally {
+            db.endTransaction()
+        }
     }
 
     fun restoreNotifications(items: List<SavedNotification>): Int {

@@ -90,6 +90,8 @@ class DetailActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (Prefs(this).appLockEnabled) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (AppLockGate.requiresUnlock(this)) {
             lockedContent?.visibility = View.INVISIBLE
             if (!lockPromptShown) {

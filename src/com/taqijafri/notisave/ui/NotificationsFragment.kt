@@ -53,12 +53,16 @@ class NotificationsFragment : Fragment() {
         db = NotiDbHelper.getInstance(activity)
         unreadOnly = savedInstanceState?.getBoolean("unread_only") ?: false
         dateRange = savedInstanceState?.getInt("date_range") ?: 0
+        selectedPackage = savedInstanceState?.getString("selected_package")
+        deletedMode = savedInstanceState?.getBoolean("deleted_mode") ?: false
+        currentQuery = savedInstanceState?.getString("query").orEmpty()
 
         listView = view.findViewById(R.id.notification_list)
         emptyState = view.findViewById(R.id.empty_state)
         chipRow = view.findViewById(R.id.chip_row)
         deletedNote = view.findViewById(R.id.deleted_note)
         searchBox = view.findViewById(R.id.search_box)
+        searchBox.setText(currentQuery)
         view.findViewById<CheckBox>(R.id.filter_unread).isChecked = unreadOnly
         view.findViewById<Spinner>(R.id.date_range_filter).setSelection(dateRange)
         view.findViewById<CheckBox>(R.id.filter_unread).setOnCheckedChangeListener { _, checked ->
@@ -120,6 +124,9 @@ class NotificationsFragment : Fragment() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean("unread_only", unreadOnly)
         outState.putInt("date_range", dateRange)
+        outState.putString("selected_package", selectedPackage)
+        outState.putBoolean("deleted_mode", deletedMode)
+        outState.putString("query", currentQuery)
         super.onSaveInstanceState(outState)
     }
 

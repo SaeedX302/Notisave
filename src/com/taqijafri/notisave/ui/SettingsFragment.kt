@@ -67,7 +67,7 @@ class SettingsFragment : Fragment() {
                 } else {
                     AppLockGate.reset(activity)
                     prefs.appLockEnabled = enabled
-                    if (enabled) (activity as? MainActivity)?.recreate()
+                    (activity as? MainActivity)?.recreate()
                 }
             }
         }
