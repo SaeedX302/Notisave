@@ -106,26 +106,27 @@ class NotiDbHelper private constructor(context: Context) :
     fun getNotifications(packageFilter: String?, query: String?, limit: Int = 500, unreadOnly: Boolean = false, fromMs: Long? = null, toMs: Long? = null): List<SavedNotification> {
         val where = StringBuilder()
         val args = ArrayList<String>()
+        fun addClause(clause: String) {
+            if (where.isNotEmpty()) where.append(" AND ")
+            where.append(clause)
+        }
         if (unreadOnly) {
-            where.append("is_read=0")
+            addClause("is_read=0")
         }
         if (fromMs != null) {
-            if (where.isNotEmpty()) where.append(" AND ")
-            where.append("post_time>=?")
+            addClause("post_time>=?")
             args.add(fromMs.toString())
         }
         if (toMs != null) {
-            if (where.isNotEmpty()) where.append(" AND ")
-            where.append("post_time<?")
+            addClause("post_time<?")
             args.add(toMs.toString())
         }
         if (!packageFilter.isNullOrBlank()) {
-            where.append("package_name=?")
+            addClause("package_name=?")
             args.add(packageFilter)
         }
         if (!query.isNullOrBlank()) {
-            if (where.isNotEmpty()) where.append(" AND ")
-            where.append("(app_name LIKE ? OR title LIKE ? OR text LIKE ? OR big_text LIKE ?)")
+            addClause("(app_name LIKE ? OR title LIKE ? OR text LIKE ? OR big_text LIKE ?)")
             val q = "%$query%"
             args.add(q); args.add(q); args.add(q); args.add(q)
         }
@@ -152,16 +153,19 @@ class NotiDbHelper private constructor(context: Context) :
     fun restoreNotifications(items: List<SavedNotification>): Int {
         val db = writableDatabase
         var inserted = 0
+        data class DuplicateKey(val pkg: String, val title: String, val text: String, val bigText: String, val time: Long)
         db.beginTransaction()
         try {
+            val keys = HashSet<DuplicateKey>()
+            db.rawQuery("SELECT package_name,title,text,big_text,post_time FROM $T_NOTI", null).use { c ->
+                while (c.moveToNext()) keys.add(DuplicateKey(
+                    c.getString(0) ?: "", c.getString(1) ?: "", c.getString(2) ?: "",
+                    c.getString(3) ?: "", c.getLong(4)
+                ))
+            }
             for (n in items) {
-                val existing = db.rawQuery(
-                    "SELECT 1 FROM $T_NOTI WHERE package_name=? AND title=? AND text=? AND big_text=? AND post_time=? LIMIT 1",
-                    arrayOf(n.packageName, n.title, n.text, n.bigText, n.postTime.toString())
-                )
-                val duplicate = existing.moveToFirst()
-                existing.close()
-                if (duplicate) continue
+                val key = DuplicateKey(n.packageName, n.title, n.text, n.bigText, n.postTime)
+                if (!keys.add(key)) continue
                 val values = ContentValues().apply {
                     put("package_name", n.packageName)
                     put("app_name", n.appName)

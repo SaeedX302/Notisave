@@ -6,8 +6,6 @@ import com.taqijafri.notisave.data.NotiDbHelper
 import com.taqijafri.notisave.data.SavedNotification
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -19,6 +17,7 @@ import javax.crypto.spec.SecretKeySpec
 object NotificationBackup {
     private const val MAGIC = "NOTISAVE-ENC-1"
     private const val ITERATIONS = 210_000
+    private const val MAX_BACKUP_BYTES = 64 * 1024 * 1024
 
     fun export(context: Context, uri: android.net.Uri, password: CharArray) {
         require(password.size >= 8) { "Use a password with at least 8 characters" }
@@ -45,9 +44,21 @@ object NotificationBackup {
     }
 
     fun import(context: Context, uri: android.net.Uri, password: CharArray): Int {
-        val document = context.contentResolver.openInputStream(uri)!!.use { stream ->
-            BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).readText()
-        }.split('\n')
+        require(password.size >= 8) { "Use a password with at least 8 characters" }
+        val bytes = context.contentResolver.openInputStream(uri)!!.use { stream ->
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val count = stream.read(buffer)
+                if (count < 0) break
+                total += count
+                require(total <= MAX_BACKUP_BYTES) { "Backup file is too large" }
+                out.write(buffer, 0, count)
+            }
+            out.toByteArray()
+        }
+        val document = String(bytes, Charsets.UTF_8).split('\n')
         require(document.size == 4 && document[0] == MAGIC) { "Unsupported backup file" }
         val salt = Base64.decode(document[1], Base64.DEFAULT)
         val iv = Base64.decode(document[2], Base64.DEFAULT)

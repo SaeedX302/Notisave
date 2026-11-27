@@ -27,6 +27,7 @@ class NotificationAdapter(
 
     private val inflater = LayoutInflater.from(context)
     private val iconCache = HashMap<String, Drawable?>()
+    private val redactPreviews = Prefs(context).redactPreviews
 
     fun update(newItems: List<SavedNotification>) {
         items = newItems
@@ -62,10 +63,9 @@ class NotificationAdapter(
 
         appName.text = n.appName
         time.text = TimeUtils.relativeTime(n.postTime)
-        val redact = Prefs(context).redactPreviews
-        title.text = if (redact) context.getString(R.string.preview_hidden)
+        title.text = if (redactPreviews) context.getString(R.string.preview_hidden)
             else if (n.title.isNotBlank()) n.title else n.appName
-        text.text = if (redact) context.getString(R.string.preview_hidden) else n.text
+        text.text = if (redactPreviews) context.getString(R.string.preview_hidden) else n.text
         dot.visibility = if (n.isRead) View.GONE else View.VISIBLE
 
         view.setOnClickListener { onItemClick(n) }

@@ -3,12 +3,11 @@ package com.taqijafri.notisave
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.Fragment
-import android.os.Build
-import android.app.KeyguardManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -21,6 +20,7 @@ import com.taqijafri.notisave.ui.SettingsFragment
 import com.taqijafri.notisave.ui.StatusesFragment
 import com.taqijafri.notisave.util.ListenerHelper
 import com.taqijafri.notisave.util.ThemeHelper
+import com.taqijafri.notisave.util.AppLockGate
 
 /**
  * Single-activity host with bottom navigation:
@@ -52,11 +52,15 @@ class MainActivity : Activity() {
     private lateinit var navItems: Array<LinearLayout>
     private lateinit var badge: TextView
     private var authInProgress = false
+    private var lockContentView: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeHelper.applyTheme(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        if (Prefs(this).appLockEnabled) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        lockContentView = findViewById(android.R.id.content)
+        if (Prefs(this).appLockEnabled) lockContentView?.visibility = View.INVISIBLE
 
         prefs = Prefs(this)
         db = NotiDbHelper.getInstance(this)
@@ -99,48 +103,24 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (::prefs.isInitialized && prefs.appLockEnabled &&
-            System.currentTimeMillis() - prefs.lastUnlockAt > 30_000L && !authInProgress) {
-            prefs.lastUnlockAt = 0L
-            authenticateForApp()
+        if (::prefs.isInitialized && AppLockGate.requiresUnlock(this)) {
+            lockContentView?.visibility = View.INVISIBLE
+            if (!authInProgress) {
+                authInProgress = true
+                AppLockGate.authenticate(this) {
+                    authInProgress = false
+                    lockContentView?.visibility = View.VISIBLE
+                }
+            }
+        } else {
+            lockContentView?.visibility = View.VISIBLE
         }
         refreshBadge()
     }
 
-    private fun authenticateForApp() {
-        authInProgress = true
-        if (Build.VERSION.SDK_INT < 29) {
-            AlertDialog.Builder(this).setMessage(R.string.app_lock_unavailable)
-                .setPositiveButton(R.string.btn_understand) { _, _ -> prefs.appLockEnabled = false; finish() }
-                .setCancelable(false).show()
-            return
-        }
-        if (!(getSystemService(KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure) {
-            AlertDialog.Builder(this).setMessage(R.string.app_lock_setup_device)
-                .setPositiveButton(R.string.btn_understand) { _, _ -> prefs.appLockEnabled = false; finish() }
-                .setCancelable(false).show()
-            return
-        }
-        android.hardware.biometrics.BiometricPrompt.Builder(this)
-            .setTitle(getString(R.string.app_lock_title))
-            .setDescription(getString(R.string.app_lock_message))
-            .setDeviceCredentialAllowed(true)
-            .build()
-            .authenticate(mainExecutor, object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
-                    authInProgress = false
-                    prefs.lastUnlockAt = System.currentTimeMillis()
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
-                    authInProgress = false
-                    finish()
-                }
-
-                override fun onAuthenticationFailed() {
-                    // Keep the prompt active so another biometric attempt is possible.
-                }
-            })
+    override fun onPause() {
+        super.onPause()
+        if (::prefs.isInitialized && prefs.appLockEnabled) lockContentView?.visibility = View.INVISIBLE
     }
 
     fun selectTab(index: Int) {

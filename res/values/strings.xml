@@ -149,7 +149,8 @@
     <string name="backup_password_short">Use a password with at least 8 characters.</string>
     <string name="backup_export_done">Encrypted backup created.</string>
     <string name="backup_import_done">Restored %1$d notifications. Existing history was kept.</string>
-    <string name="backup_failed">Could not use this backup. Check the file and password.</string>
+    <string name="backup_failed">Could not use this backup. Check the file and password. %1$s</string>
+    <string name="backup_working">Processing encrypted backup…</string>
     <string name="date_range">Date range</string>
     <string name="date_any">Any time</string>
     <string name="date_today">Today</string>
