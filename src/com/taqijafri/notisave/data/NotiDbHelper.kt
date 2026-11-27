@@ -149,11 +149,19 @@ class NotiDbHelper private constructor(context: Context) :
         return out
     }
 
-    fun restoreNotifications(items: List<SavedNotification>) {
+    fun restoreNotifications(items: List<SavedNotification>): Int {
         val db = writableDatabase
+        var inserted = 0
         db.beginTransaction()
         try {
             for (n in items) {
+                val existing = db.rawQuery(
+                    "SELECT 1 FROM $T_NOTI WHERE package_name=? AND title=? AND text=? AND big_text=? AND post_time=? LIMIT 1",
+                    arrayOf(n.packageName, n.title, n.text, n.bigText, n.postTime.toString())
+                )
+                val duplicate = existing.moveToFirst()
+                existing.close()
+                if (duplicate) continue
                 val values = ContentValues().apply {
                     put("package_name", n.packageName)
                     put("app_name", n.appName)
@@ -163,12 +171,13 @@ class NotiDbHelper private constructor(context: Context) :
                     put("post_time", n.postTime)
                     put("is_read", if (n.isRead) 1 else 0)
                 }
-                db.insert(T_NOTI, null, values)
+                if (db.insert(T_NOTI, null, values) != -1L) inserted++
             }
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
         }
+        return inserted
     }
 
     fun getById(id: Long): SavedNotification? {
