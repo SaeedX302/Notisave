@@ -49,7 +49,6 @@
 
         <EditText
             android:id="@+id/search_box"
-            android:contentDescription="@string/search_notifications"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"

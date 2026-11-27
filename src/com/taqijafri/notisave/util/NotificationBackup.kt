@@ -2,11 +2,24 @@ package com.taqijafri.notisave.util
 
 import android.content.Context
 import android.util.Base64
+import android.util.Base64OutputStream
+import android.util.Base64InputStream
+import android.util.JsonReader
 import com.taqijafri.notisave.data.NotiDbHelper
 import com.taqijafri.notisave.data.SavedNotification
-import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedOutputStream
+import java.io.ByteArrayOutputStream
 import java.io.OutputStreamWriter
+import java.io.FilterOutputStream
+import javax.crypto.CipherOutputStream
+import java.io.OutputStream
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.io.IOException
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
@@ -18,66 +31,101 @@ object NotificationBackup {
     private const val MAGIC = "NOTISAVE-ENC-1"
     private const val ITERATIONS = 210_000
     private const val MAX_BACKUP_BYTES = 64 * 1024 * 1024
+    private const val MAX_PLAINTEXT_BYTES = 48 * 1024 * 1024
+    private const val PAGE_SIZE = 500
 
     fun export(context: Context, uri: android.net.Uri, password: CharArray) {
         require(password.size >= 8) { "Use a password with at least 8 characters" }
-        val data = JSONArray()
-        NotiDbHelper.getInstance(context).getAllNotifications().forEach { item ->
-            data.put(JSONObject().apply {
-                put("package", item.packageName); put("app", item.appName)
-                put("title", item.title); put("text", item.text); put("bigText", item.bigText)
-                put("time", item.postTime); put("read", item.isRead)
-            })
-        }
         val salt = ByteArray(16).also(SecureRandom()::nextBytes)
         val iv = ByteArray(12).also(SecureRandom()::nextBytes)
         val key = deriveKey(password, salt)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, iv))
-        val encrypted = cipher.doFinal(data.toString().toByteArray(Charsets.UTF_8))
-        val document = listOf(MAGIC, Base64.encodeToString(salt, Base64.NO_WRAP),
-            Base64.encodeToString(iv, Base64.NO_WRAP), Base64.encodeToString(encrypted, Base64.NO_WRAP))
-            .joinToString("\n")
-        context.contentResolver.openOutputStream(uri, "w")!!.use { stream ->
-            OutputStreamWriter(stream, Charsets.UTF_8).use { it.write(document) }
+        context.contentResolver.openOutputStream(uri, "w")!!.use { raw ->
+            val stream = BufferedOutputStream(raw)
+            stream.write("$MAGIC\n${Base64.encodeToString(salt, Base64.NO_WRAP)}\n${Base64.encodeToString(iv, Base64.NO_WRAP)}\n".toByteArray(Charsets.UTF_8))
+            val encoded = Base64OutputStream(NonClosingOutputStream(stream), Base64.NO_WRAP)
+            CipherOutputStream(encoded, cipher).use { encrypted ->
+                val writer = OutputStreamWriter(encrypted, Charsets.UTF_8)
+                writer.write("[")
+                val db = NotiDbHelper.getInstance(context)
+                    var offset = 0
+                    var first = true
+                    var recordCount = 0
+                    var plainBytes = 2L
+                    while (true) {
+                        val page = db.getNotifications(null, null, PAGE_SIZE, offset = offset)
+                        for (item in page) {
+                            val hasPrevious = !first
+                            if (hasPrevious) writer.write(",")
+                            first = false
+                            val record = JSONObject().apply {
+                                put("package", item.packageName); put("app", item.appName)
+                                put("title", item.title); put("text", item.text); put("bigText", item.bigText)
+                                put("time", item.postTime); put("read", item.isRead)
+                            }.toString()
+                            plainBytes += record.toByteArray(Charsets.UTF_8).size + if (hasPrevious) 1 else 0
+                            require(plainBytes <= MAX_PLAINTEXT_BYTES) { "History is too large to export" }
+                            require(++recordCount <= 100_000) { "History contains too many records" }
+                            writer.write(record)
+                    }
+                    if (page.size < PAGE_SIZE) break
+                    offset += page.size
+                }
+                writer.write("]")
+                writer.flush()
+            }
+            stream.flush()
         }
     }
 
     fun import(context: Context, uri: android.net.Uri, password: CharArray): Int {
         require(password.size >= 8) { "Use a password with at least 8 characters" }
-        val bytes = context.contentResolver.openInputStream(uri)!!.use { stream ->
-            val out = java.io.ByteArrayOutputStream()
-            val buffer = ByteArray(8192)
-            var total = 0
-            while (true) {
-                val count = stream.read(buffer)
-                if (count < 0) break
-                total += count
-                require(total <= MAX_BACKUP_BYTES) { "Backup file is too large" }
-                out.write(buffer, 0, count)
+        context.contentResolver.openInputStream(uri)!!.use { source ->
+            val limited = LimitedInputStream(source, MAX_BACKUP_BYTES)
+            require(readLine(limited) == MAGIC) { "Unsupported backup file" }
+            val salt = Base64.decode(readLine(limited), Base64.DEFAULT)
+            val iv = Base64.decode(readLine(limited), Base64.DEFAULT)
+            require(salt.size == 16 && iv.size == 12) { "Invalid backup parameters" }
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE, deriveKey(password, salt), GCMParameterSpec(128, iv))
+            val decoded = Base64InputStream(limited, Base64.DEFAULT)
+            val plaintext = LimitedInputStream(javax.crypto.CipherInputStream(decoded, cipher), MAX_PLAINTEXT_BYTES)
+            val temp = File.createTempFile("notisave-restore-", ".json", context.cacheDir)
+            try {
+                FileOutputStream(temp).use { output ->
+                    val buffer = ByteArray(8192)
+                    while (true) {
+                        val count = plaintext.read(buffer)
+                        if (count < 0) break
+                        output.write(buffer, 0, count)
+                    }
+                }
+                FileInputStream(temp).use { cleartext ->
+                    JsonReader(InputStreamReader(cleartext, Charsets.UTF_8)).use { reader ->
+                        reader.beginArray()
+                        val db = NotiDbHelper.getInstance(context)
+                        val batch = ArrayList<SavedNotification>(PAGE_SIZE)
+                        var total = 0
+                        var recordsSeen = 0
+                        while (reader.hasNext()) {
+                            require(++recordsSeen <= 100_000) { "Backup contains too many records" }
+                            batch.add(readNotification(reader))
+                            if (batch.size == PAGE_SIZE) {
+                                total += db.restoreNotifications(batch)
+                                batch.clear()
+                            }
+                        }
+                        reader.endArray()
+                        require(reader.peek() == android.util.JsonToken.END_DOCUMENT) { "Unexpected data after backup" }
+                        if (batch.isNotEmpty()) total += db.restoreNotifications(batch)
+                        return total
+                    }
+                }
+            } finally {
+                temp.delete()
             }
-            out.toByteArray()
         }
-        val document = String(bytes, Charsets.UTF_8).split('\n')
-        require(document.size == 4 && document[0] == MAGIC) { "Unsupported backup file" }
-        val salt = Base64.decode(document[1], Base64.DEFAULT)
-        val iv = Base64.decode(document[2], Base64.DEFAULT)
-        val encrypted = Base64.decode(document[3], Base64.DEFAULT)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, deriveKey(password, salt), GCMParameterSpec(128, iv))
-        val json = JSONArray(String(cipher.doFinal(encrypted), Charsets.UTF_8))
-        require(json.length() <= 100_000) { "Backup contains too many records" }
-        val restored = ArrayList<SavedNotification>(json.length())
-        for (i in 0 until json.length()) {
-            val item = json.getJSONObject(i)
-            restored.add(SavedNotification(
-                packageName = item.getString("package"), appName = item.getString("app"),
-                title = item.getString("title"), text = item.getString("text"),
-                bigText = item.optString("bigText"), postTime = item.getLong("time"),
-                isRead = item.optBoolean("read")
-            ))
-        }
-        return NotiDbHelper.getInstance(context).restoreNotifications(restored)
     }
 
     private fun deriveKey(password: CharArray, salt: ByteArray): SecretKeySpec {
@@ -88,5 +136,66 @@ object NotificationBackup {
         } finally {
             spec.clearPassword()
         }
+    }
+
+    private fun readNotification(reader: JsonReader): SavedNotification {
+        var packageName: String? = null
+        var appName: String? = null
+        var title: String? = null
+        var text: String? = null
+        var bigText = ""
+        var postTime: Long? = null
+        var isRead = false
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "package" -> packageName = reader.nextString()
+                "app" -> appName = reader.nextString()
+                "title" -> title = reader.nextString()
+                "text" -> text = reader.nextString()
+                "bigText" -> bigText = reader.nextString()
+                "time" -> postTime = reader.nextLong()
+                "read" -> isRead = reader.nextBoolean()
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+        return SavedNotification(
+            packageName = requireNotNull(packageName), appName = requireNotNull(appName),
+            title = requireNotNull(title), text = requireNotNull(text), bigText = bigText,
+            postTime = requireNotNull(postTime), isRead = isRead
+        )
+    }
+
+    private fun readLine(input: InputStream): String {
+        val bytes = ByteArrayOutputStream()
+        while (bytes.size() <= 128) {
+            val value = input.read()
+            require(value >= 0) { "Incomplete backup file" }
+            if (value == '\n'.code) return bytes.toString("UTF-8")
+            bytes.write(value)
+        }
+        throw IllegalArgumentException("Invalid backup header")
+    }
+
+    private class LimitedInputStream(input: InputStream, private val maxBytes: Int) : FilterInputStream(input) {
+        private var count = 0
+        override fun read(): Int {
+            val value = super.read()
+            if (value >= 0 && ++count > maxBytes) throw IOException("Backup data is too large")
+            return value
+        }
+        override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+            val read = super.read(buffer, offset, length)
+            if (read > 0) {
+                count += read
+                if (count > maxBytes) throw IOException("Backup data is too large")
+            }
+            return read
+        }
+    }
+
+    private class NonClosingOutputStream(output: OutputStream) : FilterOutputStream(output) {
+        override fun close() = flush()
     }
 }
