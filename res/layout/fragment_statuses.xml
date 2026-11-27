@@ -41,7 +41,6 @@
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:contentDescription="@string/status_folder_access_title"
                 android:src="@drawable/ic_shield"
                 android:tint="@color/accent" />
 
@@ -64,7 +63,6 @@
 
         <Button
             android:id="@+id/btn_grant_storage"
-            android:contentDescription="@string/select_whatsapp_folder"
             style="@style/Button.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -58,7 +58,12 @@ class SettingsFragment : Fragment() {
                 if (enabled && (android.os.Build.VERSION.SDK_INT < 29 ||
                     !(activity.getSystemService(android.content.Context.KEYGUARD_SERVICE) as android.app.KeyguardManager).isDeviceSecure)) {
                     isChecked = false
-                    Toast.makeText(activity, R.string.app_lock_setup_device, Toast.LENGTH_LONG).show()
+                    val message = if (android.os.Build.VERSION.SDK_INT < 29) {
+                        R.string.app_lock_unavailable
+                    } else {
+                        R.string.app_lock_setup_device
+                    }
+                    Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
                 } else {
                     AppLockGate.reset(activity)
                     prefs.appLockEnabled = enabled
@@ -200,8 +205,12 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (resultCode != Activity.RESULT_OK || data?.data == null) return
         if (requestCode == createBackupRequest) {
+            if (resultCode != Activity.RESULT_OK || data?.data == null) {
+                pendingPassword?.fill('\u0000')
+                pendingPassword = null
+                return
+            }
             val password = pendingPassword ?: return
             pendingPassword = null
             runBackupTask(password) {
@@ -209,6 +218,7 @@ class SettingsFragment : Fragment() {
                 activity.getString(R.string.backup_export_done)
             }
         } else if (requestCode == restoreBackupRequest) {
+            if (resultCode != Activity.RESULT_OK || data?.data == null) return
             askBackupPassword { password ->
                 runBackupTask(password) {
                     val count = NotificationBackup.import(activity.applicationContext, data.data!!, password)
