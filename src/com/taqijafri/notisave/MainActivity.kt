@@ -103,6 +103,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (Prefs(this).appLockEnabled) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (::prefs.isInitialized && AppLockGate.requiresUnlock(this)) {
             lockContentView?.visibility = View.INVISIBLE
             if (!authInProgress) {

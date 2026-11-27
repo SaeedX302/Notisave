@@ -24,6 +24,7 @@ import com.taqijafri.notisave.data.Prefs
 class StatusViewerActivity : Activity() {
     private var lockedContent: View? = null
     private var lockPromptShown = false
+    private var videoPrepared = false
 
     companion object {
         const val EXTRA_URI = "uri"
@@ -63,7 +64,10 @@ class StatusViewerActivity : Activity() {
             val controller = MediaController(this)
             controller.setAnchorView(videoView)
             videoView.setMediaController(controller)
-            videoView.setOnPreparedListener { it.start() }
+            videoView.setOnPreparedListener {
+                videoPrepared = true
+                if (!AppLockGate.requiresUnlock(this)) it.start()
+            }
         } else {
             imageView.visibility = View.VISIBLE
             val bitmap = StatusHelper.thumbnail(this, status, 1080)
@@ -126,14 +130,23 @@ class StatusViewerActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (Prefs(this).appLockEnabled) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (AppLockGate.requiresUnlock(this)) {
             lockedContent?.visibility = View.INVISIBLE
             if (!lockPromptShown) {
                 lockPromptShown = true
                 AppLockGate.authenticate(this,
-                    { lockedContent?.visibility = View.VISIBLE },
+                    { revealContent() },
                     { lockPromptShown = false })
             }
-        } else lockedContent?.visibility = View.VISIBLE
+        } else revealContent()
+    }
+
+    private fun revealContent() {
+        lockedContent?.visibility = View.VISIBLE
+        if (videoPrepared && status.isVideo && !AppLockGate.requiresUnlock(this)) {
+            findViewById<VideoView>(R.id.viewer_video).start()
+        }
     }
 }
