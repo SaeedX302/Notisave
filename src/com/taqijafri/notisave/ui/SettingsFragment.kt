@@ -14,9 +14,6 @@ import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.Switch
-import android.widget.TextView
 import android.app.Activity
 import com.taqijafri.notisave.MainActivity
 import com.taqijafri.notisave.R
