@@ -57,3 +57,7 @@ that were never delivered as notifications.
 ## Developer
 
 Muhammad Taqi — WhatsApp 03077982214
+
+## Development checks
+
+Run `python3 tests/check_manifest_permissions.py` to verify the app's intentionally small manifest permission set. See [CHANGELOG.md](CHANGELOG.md) for release notes.
