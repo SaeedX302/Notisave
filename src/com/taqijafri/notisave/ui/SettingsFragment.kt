@@ -23,6 +23,7 @@ import com.taqijafri.notisave.util.Constants
 import com.taqijafri.notisave.util.ListenerHelper
 import com.taqijafri.notisave.util.ThemeHelper
 import com.taqijafri.notisave.util.NotificationBackup
+import com.taqijafri.notisave.util.AppLockGate
 
 /** Settings: theme, retention, permissions, privacy, about developer. */
 class SettingsFragment : Fragment() {
@@ -59,6 +60,7 @@ class SettingsFragment : Fragment() {
                     isChecked = false
                     Toast.makeText(activity, R.string.app_lock_setup_device, Toast.LENGTH_LONG).show()
                 } else {
+                    AppLockGate.reset()
                     prefs.appLockEnabled = enabled
                     if (enabled) (activity as? MainActivity)?.recreate()
                 }
