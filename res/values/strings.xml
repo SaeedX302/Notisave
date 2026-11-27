@@ -131,6 +131,9 @@
     <string name="filter_unread">Unread only</string>
     <string name="prune_confirm_title">Delete old notification history?</string>
     <string name="prune_confirm_message">This permanently deletes notifications older than %1$d days.</string>
+    <string name="search_notifications">Search notifications</string>
+    <string name="clear_search">Clear notification search</string>
+    <string name="select_whatsapp_folder">Select WhatsApp media folder</string>
 
     <!-- First run -->
     <string name="welcome_title">Welcome to Notisave</string>
