@@ -66,8 +66,7 @@ object NotificationBackup {
                 isRead = item.optBoolean("read")
             ))
         }
-        NotiDbHelper.getInstance(context).restoreNotifications(restored)
-        return restored.size
+        return NotiDbHelper.getInstance(context).restoreNotifications(restored)
     }
 
     private fun deriveKey(password: CharArray, salt: ByteArray): SecretKeySpec {
