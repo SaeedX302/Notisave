@@ -19,8 +19,6 @@
     <string name="status_title">Notification Access</string>
     <string name="status_enabled">Enabled — Notisave is saving notifications</string>
     <string name="status_disabled">Disabled — turn on notification access to start saving</string>
-    <string name="btn_enable_access">Enable Access</string>
-    <string name="btn_access_on">Access Granted</string>
     <string name="stat_total">Total Saved</string>
     <string name="stat_today">Today</string>
     <string name="stat_week">This Week</string>
@@ -127,6 +125,10 @@
     <string name="home_statuses_title">WhatsApp Statuses</string>
     <string name="home_statuses_subtitle">View and save statuses</string>
     <string name="btn_open">Open</string>
+    <string name="btn_enable">Enable</string>
+    <string name="btn_choose">Choose</string>
+    <string name="home_access_hint">Needed to save notifications</string>
+    <string name="home_folder_hint">Pick your WhatsApp folder to view statuses</string>
     <string name="viewer_saved">Saved ✓</string>
     <string name="preview_hidden">Preview hidden</string>
     <string name="pause_capture">Pause notification saving</string>

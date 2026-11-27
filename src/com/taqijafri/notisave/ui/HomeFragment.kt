@@ -1,8 +1,8 @@
 package com.taqijafri.notisave.ui
 
+import android.app.Activity
 import android.app.Fragment
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,6 +11,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import com.taqijafri.notisave.MainActivity
 import com.taqijafri.notisave.R
 import com.taqijafri.notisave.data.NotiDbHelper
@@ -18,9 +19,10 @@ import com.taqijafri.notisave.data.Prefs
 import com.taqijafri.notisave.util.AppInfo
 import com.taqijafri.notisave.util.Constants
 import com.taqijafri.notisave.util.ListenerHelper
+import com.taqijafri.notisave.util.StatusHelper
 import com.taqijafri.notisave.util.TimeUtils
 
-/** Dashboard: access status, statistics, top apps, recent notifications. */
+/** Dashboard: pending setup, statistics, top apps, recent notifications. */
 class HomeFragment : Fragment() {
 
     private lateinit var db: NotiDbHelper
@@ -40,11 +42,8 @@ class HomeFragment : Fragment() {
         view.findViewById<TextView>(R.id.see_all_recent).setOnClickListener {
             (activity as? MainActivity)?.selectTab(MainActivity.TAB_NOTIFICATIONS)
         }
-        view.findViewById<LinearLayout>(R.id.statuses_card).setOnClickListener {
-            (activity as? MainActivity)?.selectTab(MainActivity.TAB_STATUSES)
-        }
-        view.findViewById<Button>(R.id.btn_open_statuses).setOnClickListener {
-            (activity as? MainActivity)?.selectTab(MainActivity.TAB_STATUSES)
+        view.findViewById<Button>(R.id.btn_choose_folder).setOnClickListener {
+            StatusHelper.openFolderPicker(this)
         }
         return view
     }
@@ -54,28 +53,36 @@ class HomeFragment : Fragment() {
         refresh()
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode != StatusHelper.PICK_FOLDER_REQUEST) {
+            super.onActivityResult(requestCode, resultCode, data)
+            return
+        }
+        val uri = data?.data
+        if (resultCode == Activity.RESULT_OK && uri != null) {
+            val ok = StatusHelper.handleFolderPicked(activity, uri)
+            Toast.makeText(
+                activity,
+                if (ok) R.string.status_folder_picked else R.string.status_folder_failed,
+                Toast.LENGTH_SHORT
+            ).show()
+            refresh()
+        }
+    }
+
     fun refresh() {
         val view = view ?: return
         val activity = activity ?: return
 
-        // --- access status ---
-        val enabled = ListenerHelper.isListenerEnabled(activity)
-        val statusText = view.findViewById<TextView>(R.id.status_text)
-        val statusIcon = view.findViewById<ImageView>(R.id.status_icon)
-        val btn = view.findViewById<Button>(R.id.btn_access)
-        if (enabled) {
-            statusText.text = getString(R.string.status_enabled)
-            statusIcon.setColorFilter(Color.parseColor("#16A34A"))
-            btn.text = getString(R.string.btn_access_on)
-            btn.isEnabled = false
-            btn.alpha = 0.6f
-        } else {
-            statusText.text = getString(R.string.status_disabled)
-            statusIcon.setColorFilter(Color.parseColor("#D97706"))
-            btn.text = getString(R.string.btn_enable_access)
-            btn.isEnabled = true
-            btn.alpha = 1f
-        }
+        // --- setup: only show what is still missing ---
+        val needsAccess = !ListenerHelper.isListenerEnabled(activity)
+        val needsFolder = !StatusHelper.hasFolderAccess(activity)
+        view.findViewById<View>(R.id.access_row).visibility = if (needsAccess) View.VISIBLE else View.GONE
+        view.findViewById<View>(R.id.folder_row).visibility = if (needsFolder) View.VISIBLE else View.GONE
+        view.findViewById<View>(R.id.setup_divider).visibility =
+            if (needsAccess && needsFolder) View.VISIBLE else View.GONE
+        view.findViewById<View>(R.id.setup_card).visibility =
+            if (needsAccess || needsFolder) View.VISIBLE else View.GONE
 
         // --- stats ---
         view.findViewById<TextView>(R.id.stat_total).text = db.getTotalCount().toString()

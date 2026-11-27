@@ -143,11 +143,7 @@ class SettingsFragment : Fragment() {
         }
 
         // --- permissions ---
-        view.findViewById<TextView>(R.id.access_status_text).text =
-            getString(
-                if (ListenerHelper.isListenerEnabled(activity)) R.string.status_enabled
-                else R.string.status_disabled
-            )
+        refreshAccessState(view)
         view.findViewById<Button>(R.id.btn_access_settings).setOnClickListener {
             ListenerHelper.openListenerSettings(activity)
         }
@@ -183,11 +179,16 @@ class SettingsFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         val view = view ?: return
+        refreshAccessState(view)
+    }
+
+    /** Shows the access shortcut only while notification access is still missing. */
+    private fun refreshAccessState(view: View) {
+        val enabled = ListenerHelper.isListenerEnabled(activity)
         view.findViewById<TextView>(R.id.access_status_text).text =
-            getString(
-                if (ListenerHelper.isListenerEnabled(activity)) R.string.status_enabled
-                else R.string.status_disabled
-            )
+            getString(if (enabled) R.string.status_enabled else R.string.status_disabled)
+        view.findViewById<Button>(R.id.btn_access_settings).visibility =
+            if (enabled) View.GONE else View.VISIBLE
     }
 
     private fun askBackupPassword(onPassword: (CharArray) -> Unit) {
