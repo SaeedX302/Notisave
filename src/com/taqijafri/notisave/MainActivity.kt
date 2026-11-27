@@ -3,6 +3,9 @@ package com.taqijafri.notisave
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.Fragment
+import android.os.Build
+import android.os.SystemClock
+import android.app.KeyguardManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
@@ -49,6 +52,7 @@ class MainActivity : Activity() {
     private lateinit var navLabels: Array<TextView>
     private lateinit var navItems: Array<LinearLayout>
     private lateinit var badge: TextView
+    private var authInProgress = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeHelper.applyTheme(this)
@@ -96,7 +100,48 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (::prefs.isInitialized && prefs.appLockEnabled &&
+            SystemClock.elapsedRealtime() - prefs.lastUnlockAt > 30_000L && !authInProgress) {
+            prefs.lastUnlockAt = 0L
+            authenticateForApp()
+        }
         refreshBadge()
+    }
+
+    private fun authenticateForApp() {
+        authInProgress = true
+        if (Build.VERSION.SDK_INT < 28) {
+            AlertDialog.Builder(this).setMessage(R.string.app_lock_unavailable)
+                .setPositiveButton(R.string.btn_understand) { _, _ -> prefs.appLockEnabled = false; finish() }
+                .setCancelable(false).show()
+            return
+        }
+        if (!(getSystemService(KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure) {
+            AlertDialog.Builder(this).setMessage(R.string.app_lock_setup_device)
+                .setPositiveButton(R.string.btn_understand) { _, _ -> prefs.appLockEnabled = false; finish() }
+                .setCancelable(false).show()
+            return
+        }
+        android.hardware.biometrics.BiometricPrompt.Builder(this)
+            .setTitle(getString(R.string.app_lock_title))
+            .setDescription(getString(R.string.app_lock_message))
+            .setDeviceCredentialAllowed(true)
+            .build()
+            .authenticate(mainExecutor, object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
+                    authInProgress = false
+                    prefs.lastUnlockAt = SystemClock.elapsedRealtime()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+                    authInProgress = false
+                    finish()
+                }
+
+                override fun onAuthenticationFailed() {
+                    // Keep the prompt active so another biometric attempt is possible.
+                }
+            })
     }
 
     fun selectTab(index: Int) {
