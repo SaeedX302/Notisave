@@ -143,11 +143,7 @@ class SettingsFragment : Fragment() {
         }
 
         // --- permissions ---
-        view.findViewById<TextView>(R.id.access_status_text).text =
-            getString(
-                if (ListenerHelper.isListenerEnabled(activity)) R.string.status_enabled
-                else R.string.status_disabled
-            )
+        refreshAccessState(view)
         view.findViewById<Button>(R.id.btn_access_settings).setOnClickListener {
             ListenerHelper.openListenerSettings(activity)
         }
@@ -166,6 +162,13 @@ class SettingsFragment : Fragment() {
         }
 
         // --- about developer / WhatsApp ---
+        val versionName = try {
+            activity.packageManager.getPackageInfo(activity.packageName, 0).versionName ?: ""
+        } catch (_: Exception) { "" }
+        if (versionName.isNotEmpty()) {
+            view.findViewById<TextView>(R.id.app_version_text).text =
+                getString(R.string.app_version_format, versionName)
+        }
         view.findViewById<Button>(R.id.btn_whatsapp).setOnClickListener {
             try {
                 val intent = Intent(
@@ -183,11 +186,18 @@ class SettingsFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         val view = view ?: return
+        refreshAccessState(view)
+    }
+
+    /** Shows the access shortcut only while notification access is still missing. */
+    private fun refreshAccessState(view: View) {
+        val enabled = ListenerHelper.isListenerEnabled(activity)
         view.findViewById<TextView>(R.id.access_status_text).text =
-            getString(
-                if (ListenerHelper.isListenerEnabled(activity)) R.string.status_enabled
-                else R.string.status_disabled
-            )
+            getString(if (enabled) R.string.status_enabled else R.string.status_disabled)
+        view.findViewById<View>(R.id.settings_access_dot).visibility =
+            if (enabled) View.VISIBLE else View.GONE
+        view.findViewById<Button>(R.id.btn_access_settings).visibility =
+            if (enabled) View.GONE else View.VISIBLE
     }
 
     private fun askBackupPassword(onPassword: (CharArray) -> Unit) {
