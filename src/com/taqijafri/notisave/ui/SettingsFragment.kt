@@ -86,12 +86,19 @@ class SettingsFragment : Fragment() {
         view.findViewById<Button>(R.id.btn_prune).setOnClickListener {
             val days = prefs.retentionDays
             if (days > 0) {
-                val cutoff = System.currentTimeMillis() - days * 24L * 60L * 60L * 1000L
-                db.deleteOlderThan(cutoff)
-                Toast.makeText(activity, R.string.pruned_toast, Toast.LENGTH_SHORT).show()
-                val newTotal = db.getTotalCount()
-                val newSize = ThemeHelper.formatSize(db.getDbSizeBytes(activity))
-                view.findViewById<TextView>(R.id.storage_size).text = "$newSize • $newTotal"
+                AlertDialog.Builder(activity)
+                    .setTitle(R.string.prune_confirm_title)
+                    .setMessage(getString(R.string.prune_confirm_message, days))
+                    .setPositiveButton(R.string.btn_delete) { _, _ ->
+                        val cutoff = System.currentTimeMillis() - days * 24L * 60L * 60L * 1000L
+                        db.deleteOlderThan(cutoff)
+                        Toast.makeText(activity, R.string.pruned_toast, Toast.LENGTH_SHORT).show()
+                        val newTotal = db.getTotalCount()
+                        val newSize = ThemeHelper.formatSize(db.getDbSizeBytes(activity))
+                        view.findViewById<TextView>(R.id.storage_size).text = "$newSize • $newTotal"
+                    }
+                    .setNegativeButton(R.string.btn_cancel, null)
+                    .show()
             }
         }
 
