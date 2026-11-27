@@ -107,7 +107,9 @@
     <string name="status_folder_picked">WhatsApp folder selected</string>
     <string name="status_folder_failed">Could not use that folder — please try again</string>
     <string name="statuses_empty">No statuses found</string>
-    <string name="statuses_empty_hint">View a status in WhatsApp first — it will appear here. If statuses still don\'t show, grant file access above.</string>
+    <string name="statuses_empty_hint">Open WhatsApp and view a status first. Then tap Choose WhatsApp Folder, select WhatsApp → Media, and tap Use this folder. If access was revoked, choose the folder again.</string>
+    <string name="status_folder_access_title">Connect WhatsApp statuses</string>
+    <string name="status_folder_access_detail">Notisave only reads the folder you select with Android’s system picker. It does not need all-files access.</string>
     <string name="filter_images">Images</string>
     <string name="filter_videos">Videos</string>
     <string name="filter_saved">Saved</string>
