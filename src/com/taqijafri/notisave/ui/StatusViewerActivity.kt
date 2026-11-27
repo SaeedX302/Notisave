@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.MediaController
@@ -16,9 +17,13 @@ import com.taqijafri.notisave.util.StatusFile
 import com.taqijafri.notisave.util.StatusHelper
 import com.taqijafri.notisave.util.ThemeHelper
 import com.taqijafri.notisave.util.TimeUtils
+import com.taqijafri.notisave.util.AppLockGate
+import com.taqijafri.notisave.data.Prefs
 
 /** Full-screen viewer for one WhatsApp status, with a Save button. */
 class StatusViewerActivity : Activity() {
+    private var lockedContent: View? = null
+    private var lockPromptShown = false
 
     companion object {
         const val EXTRA_URI = "uri"
@@ -35,6 +40,9 @@ class StatusViewerActivity : Activity() {
         ThemeHelper.applyTheme(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_status_viewer)
+        if (com.taqijafri.notisave.data.Prefs(this).appLockEnabled) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        lockedContent = findViewById(android.R.id.content)
+        if (AppLockGate.requiresUnlock(this)) lockedContent?.visibility = View.INVISIBLE
 
         val uriString = intent.getStringExtra(EXTRA_URI) ?: run { finish(); return }
         status = StatusFile(
@@ -110,5 +118,20 @@ class StatusViewerActivity : Activity() {
     override fun onPause() {
         super.onPause()
         findViewById<VideoView>(R.id.viewer_video).pause()
+        if (Prefs(this).appLockEnabled) {
+            lockedContent?.visibility = View.INVISIBLE
+            lockPromptShown = false
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (AppLockGate.requiresUnlock(this)) {
+            lockedContent?.visibility = View.INVISIBLE
+            if (!lockPromptShown) {
+                lockPromptShown = true
+                AppLockGate.authenticate(this) { lockedContent?.visibility = View.VISIBLE }
+            }
+        } else lockedContent?.visibility = View.VISIBLE
     }
 }

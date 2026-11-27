@@ -58,7 +58,10 @@ class SettingsFragment : Fragment() {
                     !(activity.getSystemService(android.content.Context.KEYGUARD_SERVICE) as android.app.KeyguardManager).isDeviceSecure)) {
                     isChecked = false
                     Toast.makeText(activity, R.string.app_lock_setup_device, Toast.LENGTH_LONG).show()
-                } else prefs.appLockEnabled = enabled
+                } else {
+                    prefs.appLockEnabled = enabled
+                    if (enabled) (activity as? MainActivity)?.recreate()
+                }
             }
         }
         view.findViewById<Button>(R.id.btn_backup_export).setOnClickListener {
@@ -198,22 +201,33 @@ class SettingsFragment : Fragment() {
         if (resultCode != Activity.RESULT_OK || data?.data == null) return
         if (requestCode == createBackupRequest) {
             val password = pendingPassword ?: return
-            try {
-                NotificationBackup.export(activity, data.data!!, password)
-                Toast.makeText(activity, R.string.backup_export_done, Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Toast.makeText(activity, getString(R.string.backup_failed, e.message ?: ""), Toast.LENGTH_LONG).show()
-            } finally { password.fill('\u0000'); pendingPassword = null }
+            pendingPassword = null
+            runBackupTask(password) {
+                NotificationBackup.export(activity.applicationContext, data.data!!, password)
+                activity.getString(R.string.backup_export_done)
+            }
         } else if (requestCode == restoreBackupRequest) {
             askBackupPassword { password ->
-                try {
-                    val count = NotificationBackup.import(activity, data.data!!, password)
-                    Toast.makeText(activity, getString(R.string.backup_import_done, count), Toast.LENGTH_LONG).show()
-                    (activity as? MainActivity)?.refreshBadge()
-                } catch (e: Exception) {
-                    Toast.makeText(activity, R.string.backup_failed, Toast.LENGTH_LONG).show()
-                } finally { password.fill('\u0000') }
+                runBackupTask(password) {
+                    val count = NotificationBackup.import(activity.applicationContext, data.data!!, password)
+                    activity.getString(R.string.backup_import_done, count)
+                }
             }
         }
+    }
+
+    private fun runBackupTask(password: CharArray, work: () -> String) {
+        Toast.makeText(activity, R.string.backup_working, Toast.LENGTH_SHORT).show()
+        val owner = activity ?: run { password.fill('\u0000'); return }
+        Thread {
+            val message = try { work() } catch (e: Exception) {
+                getString(R.string.backup_failed, e.message ?: "")
+            } finally { password.fill('\u0000') }
+            owner.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
+                (activity as? MainActivity)?.refreshBadge()
+            }
+        }.start()
     }
 }
